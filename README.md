@@ -15,4 +15,4 @@
 	./run.sh list
 	./run.sh exec node1 "top -b"
 	./run.sh shutdown node1
-	
+	./run.sh ssh

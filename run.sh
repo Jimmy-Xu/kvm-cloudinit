@@ -11,6 +11,7 @@ example:
 	./run.sh list
 	./run.sh exec node1 "top -b"
 	./run.sh shutdown node1
+	./run.sh ssh node1
 EOF
 	  exit 1
 	fi
@@ -167,6 +168,32 @@ EOF
 	fn_exec $VM_NAME "sudo shutdown -h now"
 }
 
+fn_ssh(){
+if [ $# -ne 1 ];then
+		cat <<EOF
+usage:
+	./run.sh ssh <vm_name>
+example:
+	./run.sh ssh node1
+EOF
+		exit 1
+	fi
+	VM_NAME=$1
+
+	SSH_PORT=$(ps -au | grep qemu-system-x86_64 | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | grep "\-name ${VM_NAME}" | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\n", p[2]}} }')
+	echo "VM_NAME: ${VM_NAME}"
+	echo "SSH_PORT: ${SSH_PORT}"
+	if [ -z ${SSH_PORT} ];then
+		echo "can not find vmName: ${VM_NAME}"
+		exit 1
+	fi
+
+	SSH_OPT="-p${SSH_PORT} -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+	ssh ${SSH_OPT} xjimmy@localhost
+	echo -e "Goodbye!"
+
+}
+
 ## main ###################################################
 ACTION=$1
 case ${ACTION} in
@@ -181,6 +208,9 @@ case ${ACTION} in
 		;;
 	shutdown)
 		fn_shutdown $2 $3 #<vmName>
+		;;
+	ssh)
+		fn_ssh $2 $3
 		;;
 	*)
 		fn_show_usage
