@@ -23,11 +23,11 @@ cloud-localds:
 	fi
 
 ######################################################################
-# download ubuntu15.10(qcow2)
-ubuntu15.10:
-	@echo
-	@echo "----- download image: ubuntu15.10 -----"
-	@wget -c http://cloud-images.ubuntu.com/releases/15.10/release-20151203/ubuntu-15.10-server-cloudimg-amd64-disk1.img -O _base_image/ubuntu15.10.img
+# # download ubuntu15.10(qcow2)
+# ubuntu15.10:
+# 	@echo
+# 	@echo "----- download image: ubuntu15.10 -----"
+# 	@wget -c http://cloud-images.ubuntu.com/releases/15.10/release-20151203/ubuntu-15.10-server-cloudimg-amd64-disk1.img -O _base_image/ubuntu15.10.img
 
 # download ubuntu14.04(qcow2 + cloud-init)
 ubuntu14.04:
@@ -112,7 +112,6 @@ clean:
 
 help:
 	@echo "# download image"
-	@echo "  make ubuntu15.10"
 	@echo "  make ubuntu14.04"
 	@echo "  make debian8.2"
 	@echo "  make centos7"
