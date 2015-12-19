@@ -52,15 +52,15 @@ centos7:
 		echo '_base_image/centos7.img already existed'; \
 	fi
 
-# download centos6(qcow2.xz)
-centos6.6:
+# download centos6(qcow2.xz + cloud-init)
+centos6:
 	@echo
-	@echo "----- download image: centos6.6 -----"
-	@if [ ! -s _base_image/centos6.6.img ];then \
-		wget -c http://cloud.centos.org/centos/6.6/images/CentOS-6-x86_64-GenericCloud-1510.qcow2.xz -O _base_image/centos6.6.img.xz; \
-		xz -v -d --keep _base_image/centos6.6.img.xz; \
+	@echo "----- download image: centos6 -----"
+	@if [ ! -s _base_image/centos6.img ];then \
+		wget -c http://cloud.centos.org/centos/6.6/images/CentOS-6-x86_64-GenericCloud-1510.qcow2.xz -O _base_image/centos6.img.xz; \
+		xz -v -d --keep _base_image/centos6.img.xz; \
 	else \
-		echo '_base_image/centos6.6.img already existed'; \
+		echo '_base_image/centos6.img already existed'; \
 	fi
 
 # download fedora23(qcow2 + cloud-init)
@@ -116,7 +116,7 @@ help:
 	@echo "  make ubuntu14.04"
 	@echo "  make debian8.2"
 	@echo "  make centos7"
-	@echo "  make centos6.6"
+	@echo "  make centos6"
 	@echo "  make fedora23"
 	@echo "  make fedora22"
 	@echo "# generate _image/seed.img"

@@ -121,7 +121,7 @@ EOF
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh root@localhost:~
 
 	# run the script
-	ssh ${SSH_OPT} root@localhost sudo ./test.sh
+	ssh ${SSH_OPT} root@localhost ./test.sh
 
 	# TODO run the benchmark
 
@@ -199,7 +199,7 @@ EOF
 		if [ ! -z ${SSH_PORT} ];then
 			echo "shutdown running VM: ${VM_NAME}"
 			SSH_OPT="-p${SSH_PORT} -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
-			ssh ${SSH_OPT} root@localhost "sudo shutdown -h now"
+			ssh ${SSH_OPT} root@localhost "shutdown -h now"
 			sleep 2
 		else
 			echo "VM ${VM_NAME} not running"
