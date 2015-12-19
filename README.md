@@ -8,3 +8,8 @@
 
 	make
 	./play.sh
+
+
+	./run.sh run node1 2222
+	./run.sh run node2 2223
+	./run.sh list
