@@ -14,7 +14,12 @@ bootcmd:
     #- ifconfig eth1 10.71.1.99/24 up
     - echo "===== bootcmd ====="
     - echo "127.0.0.1 $(hostname)" >> /etc/hosts
-    - uptime
+    - echo "bootcmd:$(date +'%F %T')" > /tmp/run.log
     - echo "===== bootcmd  ====="
+
+runcmd:
+    - echo "===== runcmd ====="
+    - echo "runcmd :$(date +'%F %T')" >> /tmp/run.log
+    - echo "===== runcmd ====="
 
 final_message: "VM started..."
