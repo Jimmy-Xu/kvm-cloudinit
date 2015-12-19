@@ -4,6 +4,7 @@ users:
     gecos: Jimmy Xu
     groups: users
     lock_passwd: false
+    shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
     #generate passwd: mkpasswd --method=SHA-512 --rounds=4096 (plain passwd: aaa123aa)
     passwd: $6$rounds=4096$LiIq3Q3/c64erfZ4$bWHRJl.sjWTmUp01sCJBGM5tRMnx43ikjF3ckbvl75Fswbgdl1v1mgveD3fCP4W1q.rWbrt6BTiofcHnG3KFP/
