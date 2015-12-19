@@ -11,5 +11,9 @@ users:
 
 bootcmd:
     #- ifconfig eth1 10.71.1.99/24 up
+    - echo "===== bootcmd ====="
+    - echo "127.0.0.1 $(hostname)" >> /etc/hosts
+    - uptime
+    - echo "===== bootcmd  ====="
 
 final_message: "Wait for it..."
