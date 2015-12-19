@@ -1,8 +1,8 @@
 #cloud-config
 users:
-  - name: xjimmy
+  - name: root
     gecos: Jimmy Xu
-    groups: users
+    groups: root
     lock_passwd: false
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL

@@ -8,7 +8,7 @@ usage:
 	./vm.sh <action> <option>
 example: 
 	./vm.sh list
-	./vm.sh create node1 2222
+	./vm.sh create ubuntu14.04 node1 2222
 	./vm.sh exec node1 "top -b"
 	./vm.sh ssh node1
 	./vm.sh stop node1
@@ -20,30 +20,44 @@ EOF
 }
 
 fn_create() {
-	if [ $# -ne 2 ];then
+	if [ $# -ne 3 ];then
 		cat <<EOF
 usage:
-	./vm.sh create <vm_name> <port>
+	./vm.sh create <image> <vm_name> <port>
 example:
-	./vm.sh create node1 2222
+	./vm.sh create ubuntu14.04 node1 2222
 EOF
 		exit 1
 	fi
 
-	VM_NAME=$1
-	SSH_PORT=$2
-	echo "VM_NAME : ${VM_NAME}"
-	echo "SSH_PORT: ${SSH_PORT}"
-	echo
+	BASE_IMAGE="_base_image/$1.img"
+	BASE_SEED_IMAGE="_image/seed.img"
+	VM_NAME=$2
+	SSH_PORT=$3
+	echo "VM_NAME   : ${VM_NAME}"
+	echo "SSH_PORT  : ${SSH_PORT}"
+	echo "BASE_IMAGE: ${BASE_IMAGE}"
 
-	echo "##### check vmName #####"
+	echo "##### check base_image: ${BASE_IMAGE} #####"
+	if [ ! -s ${BASE_IMAGE} ];then
+		echo "base_image: ${BASE_IMAGE} not exist"
+		exit 1
+	fi
+
+	echo "##### check base_seed_image: ${BASE_SEED_IMAGE} #####"
+	if [ ! -s ${BASE_SEED_IMAGE} ];then
+		echo "base_seed_image: ${BASE_SEED_IMAGE} not exist"
+		exit 1
+	fi
+
+	echo "##### check vmName: ${VM_NAME} #####"
 	ps -au | grep qemu-system-x86_64 | grep -Ev "(sudo|grep)" | grep "\-name ${VM_NAME}"
 	if [ $? -eq 0 ];then
 		echo -e "\n[error]vmName ${VM_NAME} is in-used, please change the vm_name"
 		exit 1
 	fi
 
-	echo "##### check port #####"
+	echo "##### check port: ${SSH_PORT} #####"
 	netstat -tnopl | grep ":${SSH_PORT} "
 	if [ $? -eq 0 ];then
 		echo -e "\n[error]port ${SSH_PORT} is in-used, please change the port"
@@ -57,15 +71,16 @@ EOF
 	fi	
 
 	echo ##### prepare image #####"
-	make ubuntu-14.04-server-cloudimg-amd64-disk1.img seed.img play-trusty.img
+	make init cloud-localds ${BASE_IMAGE} seed.img
 
 	# create ephemeral overlay qcow image
 	# (we probably could have used -snapshot)
+	
 	IMG="_tmp/${VM_NAME}.img"
-	qemu-img create -f qcow2 -b `pwd`/_base_image/ubuntu-14.04-server-cloudimg-amd64-disk1.img $IMG
+	qemu-img create -f qcow2 -b `pwd`/${BASE_IMAGE} $IMG
 
 	SEED_IMG="_tmp/${VM_NAME}-seed.img"
-	qemu-img create -f qcow2 -b `pwd`/_image/seed.img $SEED_IMG
+	qemu-img create -f qcow2 -b `pwd`/${BASE_SEED_IMAGE} $SEED_IMG
 
 	echo "##### list images for ${VM_NAME} #####"
 	ls _tmp/${VM_NAME}*
@@ -103,15 +118,15 @@ EOF
 	SSH_OPT="-p${SSH_PORT} -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
 
 	# copy a script in (we could use Ansible for this kind of thing, but...)
-	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh xjimmy@localhost:~
+	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh root@localhost:~
 
 	# run the script
-	ssh ${SSH_OPT} xjimmy@localhost sudo ./test.sh
+	ssh ${SSH_OPT} root@localhost sudo ./test.sh
 
 	# TODO run the benchmark
 
 	# shut down the VM
-	#ssh ${SSH_OPT} xjimmy@localhost sudo shutdown -h now
+	#ssh ${SSH_OPT} root@localhost sudo shutdown -h now
 
 }
 
@@ -161,9 +176,9 @@ EOF
 
 	SSH_OPT="-p${SSH_PORT} -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
 	echo "-----------------------------------------------------------------------------------------------------------------------------------------"
-	echo "> ssh ${SSH_OPT} xjimmy@localhost \"bash -c '${CMD_LINE}'\""
+	echo "> ssh ${SSH_OPT} root@localhost \"bash -c '${CMD_LINE}'\""
 	echo "-----------------------------------------------------------------------------------------------------------------------------------------"
-	ssh ${SSH_OPT} xjimmy@localhost "bash -c '${CMD_LINE}'"
+	ssh ${SSH_OPT} root@localhost "bash -c '${CMD_LINE}'"
 	echo "-----------------------------------------------------------------------------------------------------------------------------------------"
 }
 
@@ -184,7 +199,7 @@ EOF
 		if [ ! -z ${SSH_PORT} ];then
 			echo "shutdown running VM: ${VM_NAME}"
 			SSH_OPT="-p${SSH_PORT} -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
-			ssh ${SSH_OPT} xjimmy@localhost "sudo shutdown -h now"
+			ssh ${SSH_OPT} root@localhost "sudo shutdown -h now"
 			sleep 2
 		else
 			echo "VM ${VM_NAME} not running"
@@ -222,7 +237,7 @@ EOF
 	fi
 
 	SSH_OPT="-p${SSH_PORT} -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
-	ssh ${SSH_OPT} xjimmy@localhost
+	ssh ${SSH_OPT} root@localhost
 	echo -e "Goodbye!"
 
 }
@@ -300,11 +315,24 @@ EOF
 ## main ###################################################
 ACTION=$1
 case ${ACTION} in
+	images)
+		cat <<EOF
+  ubuntu14.04
+  ubuntu15.10
+  debian8.2
+  centos6.6
+  centos7
+  fedora22
+  fedora23
+  cirros
+  coreos
+EOF
+		;;
 	list)
 		fn_list $2 $3
 		;;
 	create)
-		fn_create $2 $3 #<vmName> <port>
+		fn_create $2 $3 $4 #<image> <vmName> <port>
 		;;
 	exec)
 		fn_exec $2 "$3"  #<vmName> <command>
