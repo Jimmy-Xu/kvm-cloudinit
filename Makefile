@@ -11,7 +11,7 @@ init:
 cloud-localds:
 	@echo
 	@echo  "----- install cloud-localds -----";
-	@if [ ! -f /usr/local/bin/cloud-localds ];then \
+	@if [ ! -s /usr/local/bin/cloud-localds ];then \
 		sudo apt-get install cloud-utils;\
                 cd _deps;\
 		wget -c https://launchpad.net/cloud-utils/trunk/0.27/+download/cloud-utils-0.27.tar.gz;\
@@ -38,7 +38,7 @@ cirros:
 coreos:
 	@echo
 	@echo  "----- download image: coreos  -----"
-	@if [ ! -f _base_image/coreos_production_qemu_image.img ];then \
+	@if [ ! -s _base_image/coreos_production_qemu_image.img ];then \
 		wget -c  http://stable.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2 -O _base_image/coreos_production_qemu_image.img.bz2;\
 		bzcat -v _base_image/coreos_production_qemu_image.img.bz2 > _base_image/coreos_production_qemu_image.img;\
 	else \
