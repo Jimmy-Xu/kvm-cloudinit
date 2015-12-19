@@ -40,8 +40,26 @@ ls _tmp/${VM_NAME}*
 sleep 1
 
 echo -e "\n##### start the VM #####"
+# way1
 sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -hda $IMG -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22 &
+
+# way2
 #qemu-system-x86_64 -enable-kvm -net nic,model=virtio,macaddr=00:16:3e:3a:c0:99 -net tap,ifname=vnet10,script=no,downscript=no -hda $IMG -hdb _image/seed.img -m 1G -nographic -redir :2222::22 &
+
+#way3
+#sudo qemu-system-x86_64 \
+# -enable-kvm \
+# -name ${VM_NAME} \
+# -machine pc-i440fx-2.0,accel=kvm,usb=off \
+# -global kvm-pit.lost_tick_policy=discard \
+# -cpu host \
+# -realtime mlock=off \
+# -no-user-config \
+# -no-hpet \
+# -no-reboot \
+# -rtc base=utc,driftfix=slew \
+# -smp 1 \
+# -net nic -net user -hda $IMG -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22 &
 
 # remove the overlay (qemu will keep it open as needed)
 sleep 10
@@ -52,13 +70,13 @@ rm $SEED_IMG
 SSH_OPT="-p${SSH_PORT} -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
 
 # copy a script in (we could use Ansible for this kind of thing, but...)
-rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh spyre@localhost:~
+rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh xjimmy@localhost:~
 
 # run the script
-ssh ${SSH_OPT} spyre@localhost sudo ./test.sh
+ssh ${SSH_OPT} xjimmy@localhost sudo ./test.sh
 
 # TODO run the benchmark
 
 # shut down the VM
-ssh ${SSH_OPT} spyre@localhost sudo shutdown -h now
+ssh ${SSH_OPT} xjimmy@localhost sudo shutdown -h now
 

@@ -21,13 +21,13 @@ rm $IMG
 SSH_OPT="-p2222 -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
 
 # copy a script in (we could use Ansible for this kind of thing, but...)
-rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh spyre@localhost:~
+rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh xjimmy@localhost:~
 
 # run the script
-ssh ${SSH_OPT} spyre@localhost ./test.sh
+ssh ${SSH_OPT} xjimmy@localhost ./test.sh
 
 # TODO run the benchmark
 
 # shut down the VM
-ssh ${SSH_OPT} spyre@localhost sudo shutdown -h now
+ssh ${SSH_OPT} xjimmy@localhost sudo shutdown -h now
 
