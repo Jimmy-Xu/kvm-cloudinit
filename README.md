@@ -13,3 +13,6 @@
 	./run.sh run node1 2222
 	./run.sh run node2 2223
 	./run.sh list
+	./run.sh exec node1 "top -b"
+	./run.sh shutdown node1
+	

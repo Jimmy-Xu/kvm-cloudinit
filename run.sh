@@ -9,6 +9,8 @@ usage:
 example: 
 	./run.sh run node1 2222
 	./run.sh list
+	./run.sh exec node1 "top -b"
+	./run.sh shutdown node1
 EOF
 	  exit 1
 	fi
@@ -111,18 +113,74 @@ EOF
 }
 
 fn_list(){
+	if [ $# -ne 0 ];then
+		cat <<EOF
+usage:
+	./run.sh list
+EOF
+		exit 1
+	fi
 	echo -e "vmName\thPort\tvPort"
 	ps -au | grep qemu-system-x86_64 | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if ($i=="-name"){printf "%s\t", $(i+1)};if (index($i,"::22")>0){split($i,p,":");printf "%s\t22\n", p[2]}} }'
+}
+
+fn_exec(){
+	if [[ $# -ne 2 ]] || [[ -z $2 ]] ;then
+		cat <<EOF
+usage:
+	./run.sh exec <vm_name> <command_line>
+example:
+	./run.sh exec node1 "top -b"
+EOF
+		exit 1
+	fi
+	VM_NAME=$1
+	CMD_LINE=$2
+	SSH_PORT=$(ps -au | grep qemu-system-x86_64 | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | grep "\-name ${VM_NAME}" | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\n", p[2]}} }')
+	echo "VM_NAME: ${VM_NAME}"
+	echo "SSH_PORT: ${SSH_PORT}"
+	if [ -z ${SSH_PORT} ];then
+		echo "can not find vmName: ${VM_NAME}"
+		exit 1
+	fi
+
+	SSH_OPT="-p${SSH_PORT} -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+
+	echo -e "\n== Execute command in VM ================\n"
+	echo "> ${CMD_LINE}"
+	echo -e "\n== result ===============================\n"
+	ssh ${SSH_OPT} xjimmy@localhost "bash -c '${CMD_LINE}'"
+	echo -e "\n=========================================\n"
+}
+
+fn_shutdown(){
+	if [ $# -ne 1 ];then
+		cat <<EOF
+usage:
+	./run.sh shutdown <vm_name>
+example:
+	./run.sh shutdown node1
+EOF
+		exit 1
+	fi
+	VM_NAME=$1
+	fn_exec $VM_NAME "sudo shutdown -h now"
 }
 
 ## main ###################################################
 ACTION=$1
 case ${ACTION} in
 	run)
-		fn_run $2 $3
+		fn_run $2 $3 #<vmName> <port>
 		;;
 	list)
-		fn_list
+		fn_list $2 $3
+		;;
+	exec)
+		fn_exec $2 "$3"  #<vmName> <command>
+		;;
+	shutdown)
+		fn_shutdown $2 $3 #<vmName>
 		;;
 	*)
 		fn_show_usage
