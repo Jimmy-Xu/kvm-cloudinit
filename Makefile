@@ -1,4 +1,4 @@
-all: init cloud-localds cirros coreos ubuntu-14.04 seed.img play-trusty.img
+all: init cloud-localds seed.img
 
 # init
 init:
@@ -7,27 +7,12 @@ init:
 	@mkdir -p _base_image _deps _image _tmp
 	@chmod 400 etc/.ssh/id_rsa
 
-# install cloud-localds
-cloud-localds:
-	@echo
-	@echo  "----- install cloud-localds -----";
-	@if [ ! -s /usr/local/bin/cloud-localds ];then \
-		sudo apt-get install cloud-utils;\
-                cd _deps;\
-		wget -c https://launchpad.net/cloud-utils/trunk/0.27/+download/cloud-utils-0.27.tar.gz;\
-		tar xzvf cloud-utils-0.27.tar.gz;\
-		sudo cp cloud-utils-0.27/bin/cloud-localds /usr/local/bin;\
-		cd -;\
-	else \
-		echo "cloud-localds already installed";\
-	fi
-
 ######################################################################
-# # download ubuntu15.10(qcow2)
-# ubuntu15.10:
-# 	@echo
-# 	@echo "----- download image: ubuntu15.10 -----"
-# 	@wget -c http://cloud-images.ubuntu.com/releases/15.10/release-20151203/ubuntu-15.10-server-cloudimg-amd64-disk1.img -O _base_image/ubuntu15.10.img
+# download ubuntu15.10(qcow2)
+ubuntu15.10:
+	@echo
+	@echo "----- download image: ubuntu15.10 -----"
+	@wget -c http://cloud-images.ubuntu.com/releases/15.10/release-20151203/ubuntu-15.10-server-cloudimg-amd64-disk1.img -O _base_image/ubuntu15.10.img
 
 # download ubuntu14.04(qcow2 + cloud-init)
 ubuntu14.04:
@@ -91,6 +76,21 @@ fedora22:
 # 	fi
 ######################################################################
 
+# install cloud-localds
+cloud-localds:
+	@echo
+	@echo  "----- install cloud-localds -----";
+	@if [ ! -s /usr/local/bin/cloud-localds ];then \
+		sudo apt-get install cloud-utils;\
+                cd _deps;\
+		wget -c https://launchpad.net/cloud-utils/trunk/0.27/+download/cloud-utils-0.27.tar.gz;\
+		tar xzvf cloud-utils-0.27.tar.gz;\
+		sudo cp cloud-utils-0.27/bin/cloud-localds /usr/local/bin;\
+		cd -;\
+	else \
+		echo "cloud-localds already installed";\
+	fi
+
 # convert user data into an ISO image
 seed.img: etc/user-data
 	@echo
@@ -112,6 +112,7 @@ clean:
 
 help:
 	@echo "# download image"
+	@echo "  make ubuntu15.10"
 	@echo "  make ubuntu14.04"
 	@echo "  make debian8.2"
 	@echo "  make centos7"

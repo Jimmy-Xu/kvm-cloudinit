@@ -21,6 +21,11 @@ bootcmd:
 runcmd:
     - echo "===== runcmd ====="
     - echo "runcmd :$(date +'%F %T')" >> /tmp/run.log
+    - netstat -tnopl
+    - ps -ef | grep sshd
+    - service sshd status
+    - ifconfig
+    - ip route
     - echo "===== runcmd ====="
 
 final_message: "VM started..."

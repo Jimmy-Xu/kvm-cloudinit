@@ -7,13 +7,15 @@ fn_show_usage() {
 usage:
 	./vm.sh <action> <option>
 example: 
-	./vm.sh list
+	./vm.sh images
 	./vm.sh create ubuntu14.04 node1 2222
+	./vm.sh list
 	./vm.sh exec node1 "top -b"
 	./vm.sh ssh node1
 	./vm.sh stop node1
 	./vm.sh start node1 2222
 	./vm.sh shutdown node1
+
 EOF
 	  exit 1
 	fi
@@ -71,7 +73,7 @@ EOF
 	fi	
 
 	echo ##### prepare image #####"
-	make init cloud-localds ${BASE_IMAGE} seed.img
+	make ${BASE_IMAGE}
 
 	# create ephemeral overlay qcow image
 	# (we probably could have used -snapshot)
@@ -90,6 +92,9 @@ EOF
 	echo -e "\n##### start the VM #####"
 	# way1
 	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -hda $IMG -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22 &
+
+	#sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -drive file=${IMG},if=virtio -boot c -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22&
+	
 
 	# way2
 	#qemu-system-x86_64 -enable-kvm -net nic,model=virtio,macaddr=00:16:3e:3a:c0:99 -net tap,ifname=vnet10,script=no,downscript=no -hda $IMG -hdb _image/seed.img -m 1G -nographic -redir :2222::22 &
@@ -140,14 +145,19 @@ EOF
 	fi
 		
 	#output
-	echo -e "vmName\thPort\tvPort"
+	echo -e "vmName\toutPort\tinPort\tPID\tbacking_image"
 
 	cd _tmp
 	for img in *-seed.img
 	do
 		VM_NAME=$(echo $img | cut -f1 -d"-")
 		PORT=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\t22\n", p[2]}} }')
-		echo -e "$VM_NAME\t${PORT}"
+		PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
+		
+		HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
+		BACKING_FILE=$(qemu-img info `pwd`/../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
+
+		echo -e "$VM_NAME\t${PORT}\t${PID}\t${BACKING_FILE}"
 	done
 	cd - > /dev/null
 
@@ -317,15 +327,16 @@ ACTION=$1
 case ${ACTION} in
 	images)
 		cat <<EOF
-  ubuntu14.04
-  ubuntu15.10
-  debian8.2
-  centos6.6
-  centos7
-  fedora22
-  fedora23
-  cirros
-  coreos
+#support image
+   ubuntu14.04
+   centos6
+   fedora22
+   fedora23
+   #ubuntu15.10
+   #centos7
+   #debian8.2
+#how to create a new vm
+  ./vm.sh create ubuntu14.04 node1 2223
 EOF
 		;;
 	list)
