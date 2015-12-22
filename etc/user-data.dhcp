@@ -1,4 +1,6 @@
 #cloud-config
+
+hostname: {HOSTNAME}
 users:
   - name: root
     gecos: Jimmy Xu
@@ -13,7 +15,7 @@ users:
 
 bootcmd:
     - echo "===== bootcmd ====="
-    - echo "127.0.0.1 $(hostname)" >> /etc/hosts
+    - echo "127.0.0.1 {HOSTNAME}" >> /etc/hosts
     - echo "bootcmd:$(date +'%F %T')" > /tmp/run.log
     - echo "===== bootcmd  ====="
 

@@ -82,6 +82,9 @@ EOF
 		sed "s/{STATIC_IP}/${STATIC_IP}/" etc/user-data.static > etc/user-data
 	fi
 
+	echo "##### change hostname #####"
+	sed -i "s/{HOSTNAME}/${VM_NAME}/" etc/user-data
+
 	echo "etc/user-data"
 	echo "-----------------------------------"
 	cat etc/user-data
