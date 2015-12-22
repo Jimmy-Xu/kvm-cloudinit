@@ -161,19 +161,22 @@ EOF
 	#output
 	echo -e "vmName\tport\tPID\tbacking_image"
 
-	cd _tmp/host
-	for img in *-seed.img
-	do
-		VM_NAME=$(echo $img | cut -f1 -d"-")
-		PORT=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\n", p[2]}} }')
-		PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
-		
-		HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
-		BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
+	ls _tmp/host/*-seed.img >/dev/null 2>&1
+	if [ $? -eq 0 ];then
+		cd _tmp/host
+		for img in `ls *-seed.img`
+		do
+			VM_NAME=$(echo $img | cut -f1 -d"-")
+			PORT=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\n", p[2]}} }')
+			PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
+			
+			HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
+			BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
 
-		echo -e "$VM_NAME\t${PORT}\t${PID}\t${BACKING_FILE}"
-	done
-	cd - > /dev/null
+			echo -e "$VM_NAME\t${PORT}\t${PID}\t${BACKING_FILE}"
+		done
+		cd - > /dev/null
+	fi
 
 
 }
