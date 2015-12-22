@@ -30,9 +30,10 @@ if [ $? -eq 0 ];then
 	echo "> restart docker daemon"
 	service docker restart
 
-	echo "> pull busybox image"
+	echo "> pull docker images: busybox swarm"
 	sleep 2
 	docker pull busybox
+	docker pull swarm
 
 	echo "> test busybox"
 	docker run -it --rm busybox uname -a
