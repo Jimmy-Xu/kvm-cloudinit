@@ -350,6 +350,72 @@ EOF
 
 }
 
+fn_clone(){
+
+	if [ $# -ne 2 ];then
+			cat <<EOF
+	usage:
+		./vm-nat.sh clone <source_vm_name> <target_vm_name>
+	example:
+		./vm-nat.sh clone node1 node2
+EOF
+			exit 1
+		fi
+	VM_NAME=$1
+	NEW_VM_NAME=$2
+
+	echo "check image for ${VM_NAME}: should be exist"
+	#check image
+	if [[ ! -f _tmp/nat/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/nat/${VM_NAME}.img ]];then
+		echo "[error]image of VM ${VM_NAME} doesn't exist"
+		exit 1
+	elif [[ ! -f _tmp/nat/${VM_NAME}-seed.img ]] || [[ ! -f _tmp/nat/${VM_NAME}.img ]];then
+		echo "[error]image of VM ${VM_NAME} was damaged "
+		exit 1
+	else
+		echo "image of VM ${VM_NAME} is OK"
+	fi
+
+	echo "check image for ${NEW_VM_NAME}: should not be exist"
+	#check image
+	if [[ -f _tmp/nat/${NEW_VM_NAME}-seed.img ]] || [[ -f _tmp/nat/${NEW_VM_NAME}.img ]];then
+		echo "[error]image of VM ${NEW_VM_NAME} already exist"
+		exit 1
+	else
+		echo "image of VM ${NEW_VM_NAME} doesn't existed, OK"
+	fi
+
+	#check process
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	echo "VM_NAME: ${VM_NAME}"
+	echo "PID: ${PID}"
+	if [ ! -z ${PID} ];then
+		echo "vmName: ${VM_NAME} is running, please stop it fisrt"
+		echo "  ./vm_nat.sh stop ${VM_NAME}"
+		exit 1
+	fi
+
+	echo "start clone image of VM: ${VM_NAME} -> ${NEW_VM_NAME}, please wait..."
+	IMG="_tmp/nat/${VM_NAME}.img"
+	SEED_IMG="_tmp/nat/${VM_NAME}-seed.img"
+	NEW_IMG="_tmp/nat/${NEW_VM_NAME}.img"
+	NEW_SEED_IMG="_tmp/nat/${NEW_VM_NAME}-seed.img"
+	
+	cp ${IMG} ${NEW_IMG}
+	cp ${SEED_IMG} ${NEW_SEED_IMG}
+
+	if [[ -f _tmp/nat/${NEW_VM_NAME}-seed.img ]] && [[ -f _tmp/nat/${NEW_VM_NAME}.img ]];then
+		echo "clone ${VM_NAME} to ${NEW_VM_NAME} succeed!"
+	else
+		echo "image of VM ${NEW_VM_NAME} doesn't existed, clone failed"
+	fi
+
+	echo "---------------------------------------"
+	echo "current VM list:"
+	echo "---------------------------------------"
+	fn_list
+}
+
 ## main ###################################################
 ACTION=$1
 case ${ACTION} in
@@ -387,6 +453,9 @@ EOF
 		;;
 	shutdown)
 		fn_shutdown $2 $3 #<vmName>
+		;;
+	clone)
+		fn_clone $2 $3 #<sourceVmName> <targetVMName>
 		;;
 	*)
 		fn_show_usage
