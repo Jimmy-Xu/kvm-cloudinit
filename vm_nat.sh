@@ -8,7 +8,7 @@ usage:
 	./vm-nat.sh <action> <option>
 example: 
 	./vm-nat.sh images
-	./vm-nat.sh create node1
+	./vm-nat.sh create ubuntu14.04 node1
 	./vm-nat.sh list
 	./vm-nat.sh exec node1 "top -b"
 	./vm-nat.sh ssh node1
@@ -22,20 +22,19 @@ EOF
 }
 
 fn_create() {
-	if [ $# -ne 1 ];then
+	if [ $# -ne 2 ];then
 		cat <<EOF
 usage:
-	./vm-nat.sh create <vm_name>
+	./vm-nat.sh create <image> <vm_name>
 example:
-	./vm-nat.sh create node1
+	./vm-nat.sh create ubuntu14.04 node1
 EOF
 		exit 1
 	fi
 
-	BASE_IMAGE="_base_image/ubuntu14.04.img"
+	BASE_IMAGE="_base_image/$1.img"
 	BASE_SEED_IMAGE="_image/seed.img"
-	VM_NAME=$1
-	SSH_PORT=22
+	VM_NAME=$2
 	echo "VM_NAME   : ${VM_NAME}"
 	echo "SSH_PORT  : ${SSH_PORT}"
 	echo "BASE_IMAGE: ${BASE_IMAGE}"
@@ -169,6 +168,9 @@ EOF
 		for img in `ls *-seed.img`
 		do
 			VM_NAME=$(echo $img | cut -f1 -d"-")
+			MAC_ADDR=""
+			GUEST_IP=""
+			BACKING_FILE=""
 			PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
 			if [ ! -z ${PID} ];then
 				HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
@@ -177,7 +179,7 @@ EOF
 				MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 				GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
 
-				if [ -z $"GUEST_IP" ];then
+				if [ -z ${GUEST_IP} ];then
 					GUEST_IP="               "
 				fi
 			fi
@@ -245,6 +247,13 @@ EOF
 	else
 		echo "delete vm ${VM_NAME} failed"
 	fi
+
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}"  | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
+	for p in $PID
+	do
+		ps -au | grep " ${p} .*_tmp/nat/" | grep -Ev "(sudo|grep)" | awk -v p=$p  '{if($2==p){print $0}}'
+		sudo kill $p
+	done
 }
 
 fn_ssh(){
@@ -362,7 +371,7 @@ EOF
 		fn_list $2 $3
 		;;
 	create)
-		fn_create $2 $3 #<vmName>
+		fn_create $2 $3 #<image> <vmName>
 		;;
 	exec)
 		fn_exec $2 "$3"  #<vmName> <command>

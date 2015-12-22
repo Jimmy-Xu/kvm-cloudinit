@@ -119,13 +119,27 @@ EOF
 	#rm $IMG
 	#rm $SEED_IMG
 
-
 	SSH_OPT="-p${SSH_PORT} -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+	
+	#check ip
+	echo "check guest ip"
+	cnt=1
+	ssh ${SSH_OPT} root@localhost ifconfig
+	while [[ $? -ne 0 ]]
+	do
+		echo "$cnt: waiting for guest ip..."
+		sleep 1
+		cnt=$((cnt + 1))
+		ssh ${SSH_OPT} root@localhost ifconfig
+	done
 
+	sleep 5
 	# copy a script in (we could use Ansible for this kind of thing, but...)
+	echo "start copy test.sh to guest..."
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh root@localhost:~
 
 	# run the script
+	echo "execute test.sh in guest ..."
 	ssh ${SSH_OPT} root@localhost ./test.sh
 
 	# TODO run the benchmark
@@ -145,13 +159,13 @@ EOF
 	fi
 		
 	#output
-	echo -e "vmName\toutPort\tinPort\tPID\tbacking_image"
+	echo -e "vmName\tport\tPID\tbacking_image"
 
 	cd _tmp/host
 	for img in *-seed.img
 	do
 		VM_NAME=$(echo $img | cut -f1 -d"-")
-		PORT=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\t22\n", p[2]}} }')
+		PORT=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\n", p[2]}} }')
 		PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
 		
 		HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
