@@ -44,13 +44,13 @@
 
 	## Create new VM
 	./vm_nat.sh create ubuntu14.04 node1
-	./vm_nat.sh create ubuntu14.04 node2
+	./vm_nat.sh create ubuntu14.04 node2 192.168.122.128
 
 	## Show VM list
 	./vm_nat.sh list
-	vmName	PID		mac_addr			guest_ip		backing_image
-	node1	5620	52:54:00:05:36:89	192.168.122.119	ubuntu14.04.img
-	node2	6287	52:54:00:8f:97:6f	192.168.122.147	ubuntu14.04.img
+	vmName	PID	mac_addr		guest_ip	backing_image
+	node1	27699	52:54:00:ed:08:13	192.168.122.204	ubuntu14.04.img
+	node2	28009	52:54:00:05:84:cc	192.168.122.128	ubuntu14.04.img <=
 
 	## Run command line in VM though SSH
 	./vm_nat.sh exec node1 "uname -a"
@@ -64,11 +64,21 @@
 	## SSH to VM
 	./vm_nat.sh ssh node1
 
+	## change ip of node1
+	./vm_nat.sh ssh node1
+	root@ubuntu:~# ./set_ip.sh 192.168.122.200
+
 	## Stop VM(kill qemu process, keep image file)
 	./vm_nat.sh stop node1
 
 	## Start VM from image file
 	./vm_nat.sh start node1
+
+	## Show VM list
+	./vm_nat.sh list
+	vmName	PID		mac_addr			guest_ip		backing_image
+	node1	5620	52:54:00:05:36:89	192.168.122.119	ubuntu14.04.img
+	node2	6287	52:54:00:8f:97:6f	192.168.122.200	ubuntu14.04.img <=
 
 	## Shutdown VM(kill qemu process, delete image file)
 	./vm_nat.sh shutdown node1

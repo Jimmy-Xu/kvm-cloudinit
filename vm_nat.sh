@@ -59,7 +59,7 @@ EOF
 	fi	
 
 	echo "##### check ip #####"
-	arp | grep ${STATIC_IP}
+	arp | grep ${STATIC_IP} | grep -v "incomplete"
 	if [ $? -eq 0 ];then
 		echo "[error] ip($STATIC_IP) is using"
 		exit 1
@@ -152,7 +152,7 @@ EOF
 				exit 1
 			fi
 			MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-			GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
+			GUEST_IP=$(arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 			echo "$cnt:waiting guest ip of mac(${MAC_ADDR})"
 			cnt=$((cnt + 1))
 			sleep 1
@@ -165,7 +165,7 @@ EOF
 				exit 1
 			fi
 			MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-			GUEST_IP=$(arp  | grep "${STATIC_IP}.*${MAC_ADDR}" | awk '{print $1}')
+			GUEST_IP=$(arp  | grep "${STATIC_IP}.*${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 			echo "$cnt:waiting guest ip(${STATIC_IP}) of mac(${MAC_ADDR})"
 			cnt=$((cnt + 1))
 			sleep 1
@@ -179,6 +179,7 @@ EOF
 
 	# copy a script in (we could use Ansible for this kind of thing, but...)
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init.sh root@${GUEST_IP}:~
+	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/set_ip.sh root@${GUEST_IP}:~
 
 	# run the script
 	ssh ${SSH_OPT} root@${GUEST_IP} "./init.sh"
@@ -217,7 +218,7 @@ EOF
 				BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
 
 				MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-				GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
+				GUEST_IP=$(arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 				if [ -z ${GUEST_IP} ];then
 					GUEST_IP="               "
@@ -244,7 +245,7 @@ EOF
 	CMD_LINE=$2
 
 	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-	GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
+	GUEST_IP=$(arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 	SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
 	echo "-----------------------------------------------------------------------------------------------------------------------------------------"
@@ -267,7 +268,7 @@ EOF
 	VM_NAME=$1
 	if [[ -f _tmp/nat/${VM_NAME}-seed.img ]] || [[ -f _tmp/nat/${VM_NAME}.img ]];then
 		MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-		GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
+		GUEST_IP=$(arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 		if [[ ! -z ${GUEST_IP} ]];then
 			echo "shutdown running VM: ${VM_NAME}"
@@ -310,7 +311,7 @@ EOF
 	echo "VM_NAME: ${VM_NAME}"
 
 	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-	GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
+	GUEST_IP=$(arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 	SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
 	echo "ssh ${SSH_OPT} root@${GUEST_IP}"
@@ -456,6 +457,73 @@ EOF
 	fn_list
 }
 
+
+fn_set_ip(){
+
+	if [ $# -ne 2 ];then
+			cat <<EOF
+	usage:
+		./vm-nat.sh clone <source_vm_name> <target_vm_name>
+	example:
+		./vm-nat.sh clone node1 node2
+EOF
+			exit 1
+		fi
+	VM_NAME=$1
+	NEW_VM_NAME=$2
+
+	echo "check image for ${VM_NAME}: should be exist"
+	#check image
+	if [[ ! -f _tmp/nat/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/nat/${VM_NAME}.img ]];then
+		echo "[error]image of VM ${VM_NAME} doesn't exist"
+		exit 1
+	elif [[ ! -f _tmp/nat/${VM_NAME}-seed.img ]] || [[ ! -f _tmp/nat/${VM_NAME}.img ]];then
+		echo "[error]image of VM ${VM_NAME} was damaged "
+		exit 1
+	else
+		echo "image of VM ${VM_NAME} is OK"
+	fi
+
+	echo "check image for ${NEW_VM_NAME}: should not be exist"
+	#check image
+	if [[ -f _tmp/nat/${NEW_VM_NAME}-seed.img ]] || [[ -f _tmp/nat/${NEW_VM_NAME}.img ]];then
+		echo "[error]image of VM ${NEW_VM_NAME} already exist"
+		exit 1
+	else
+		echo "image of VM ${NEW_VM_NAME} doesn't existed, OK"
+	fi
+
+	#check process
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	echo "VM_NAME: ${VM_NAME}"
+	echo "PID: ${PID}"
+	if [ ! -z ${PID} ];then
+		echo "vmName: ${VM_NAME} is running, please stop it fisrt"
+		echo "  ./vm_nat.sh stop ${VM_NAME}"
+		exit 1
+	fi
+
+	echo "start clone image of VM: ${VM_NAME} -> ${NEW_VM_NAME}, please wait..."
+	IMG="_tmp/nat/${VM_NAME}.img"
+	SEED_IMG="_tmp/nat/${VM_NAME}-seed.img"
+	NEW_IMG="_tmp/nat/${NEW_VM_NAME}.img"
+	NEW_SEED_IMG="_tmp/nat/${NEW_VM_NAME}-seed.img"
+	
+	cp ${IMG} ${NEW_IMG}
+	cp ${SEED_IMG} ${NEW_SEED_IMG}
+
+	if [[ -f _tmp/nat/${NEW_VM_NAME}-seed.img ]] && [[ -f _tmp/nat/${NEW_VM_NAME}.img ]];then
+		echo "clone ${VM_NAME} to ${NEW_VM_NAME} succeed!"
+	else
+		echo "image of VM ${NEW_VM_NAME} doesn't existed, clone failed"
+	fi
+
+	echo "---------------------------------------"
+	echo "current VM list:"
+	echo "---------------------------------------"
+	fn_list
+}
+
 ## main ###################################################
 ACTION=$1
 case ${ACTION} in
@@ -496,6 +564,9 @@ EOF
 		;;
 	clone)
 		fn_clone $2 $3 #<sourceVmName> <targetVMName>
+		;;
+	set_ip)
+		fn_set_ip $2 $3 #<vmName> <new_ip>
 		;;
 	*)
 		fn_show_usage
