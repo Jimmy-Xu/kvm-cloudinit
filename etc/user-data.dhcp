@@ -12,7 +12,6 @@ users:
       - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCp4xR1QBtsBW56Cws4T1ZeyqLEz749qzf06DxQxPblcuMA5+RaC7pTtvbfQAOD2Qyjn1yxRtA0gOwIQcmG7RS4wW817IBvIZCfZG8HIuRl53iUnmRHFHRF+F9xOSOf2NnWtLbRhJwCxxbYo6RfjdxglGfLtZQ3bgx+tAIaB7v6sZkvpxX469dmYxPu2jEbSBVSgPC6Ih7jfrkF4SUN67EyhntQt2EzMI1pZ1kX41ytxE9zjuKp/r3D8NiBu1zlbBsBf/+OJWnjZwL5vjx73nze6ntqus7STmkZMVUh9B+dDKNUtO2O2Q/Otm/aDw3PKiDU6a+rJQ89w6jnRIfcbpnr root@mini-ubuntu
 
 bootcmd:
-    #- ifconfig eth1 10.71.1.99/24 up
     - echo "===== bootcmd ====="
     - echo "127.0.0.1 $(hostname)" >> /etc/hosts
     - echo "bootcmd:$(date +'%F %T')" > /tmp/run.log

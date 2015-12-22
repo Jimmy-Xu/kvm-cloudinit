@@ -8,7 +8,7 @@ usage:
 	./vm-nat.sh <action> <option>
 example: 
 	./vm-nat.sh images
-	./vm-nat.sh create ubuntu14.04 node1
+	./vm-nat.sh create ubuntu14.04 node1 192.168.122.128
 	./vm-nat.sh list
 	./vm-nat.sh exec node1 "top -b"
 	./vm-nat.sh ssh node1
@@ -22,32 +22,26 @@ EOF
 }
 
 fn_create() {
-	if [ $# -ne 2 ];then
+	if [ $# -lt 2 ];then
 		cat <<EOF
 usage:
-	./vm-nat.sh create <image> <vm_name>
+	./vm-nat.sh create <image> <vm_name> <ip>
 example:
-	./vm-nat.sh create ubuntu14.04 node1
+	./vm-nat.sh create ubuntu14.04 node1 192.168.122.128
 EOF
 		exit 1
 	fi
 
 	BASE_IMAGE="_base_image/$1.img"
-	BASE_SEED_IMAGE="_image/seed.img"
 	VM_NAME=$2
+	STATIC_IP=$3
 	echo "VM_NAME   : ${VM_NAME}"
-	echo "SSH_PORT  : ${SSH_PORT}"
 	echo "BASE_IMAGE: ${BASE_IMAGE}"
+	echo "STATIC_IP : ${STATIC_IP}"
 
 	echo "##### check base_image: ${BASE_IMAGE} #####"
 	if [ ! -s ${BASE_IMAGE} ];then
 		echo "base_image: ${BASE_IMAGE} not exist"
-		exit 1
-	fi
-
-	echo "##### check base_seed_image: ${BASE_SEED_IMAGE} #####"
-	if [ ! -s ${BASE_SEED_IMAGE} ];then
-		echo "base_seed_image: ${BASE_SEED_IMAGE} not exist"
 		exit 1
 	fi
 
@@ -64,17 +58,47 @@ EOF
 		exit 1
 	fi	
 
+	echo "##### check ip #####"
+	arp | grep ${STATIC_IP}
+	if [ $? -eq 0 ];then
+		echo "[error] ip($STATIC_IP) is using"
+		exit 1
+	fi
+	
 	echo ##### prepare image #####"
 	make ${BASE_IMAGE}
 
 	# create ephemeral overlay qcow image
 	# (we probably could have used -snapshot)
-	
 	IMG="_tmp/nat/${VM_NAME}.img"
+	SEED_IMG="_tmp/nat/${VM_NAME}-seed.img"
+
+	echo "##### convert user data into an ISO image #####"
+	if [ -z ${STATIC_IP} ];then
+		echo "dhcp..."
+		cat etc/user-data.dhcp > etc/user-data
+	else
+		echo "static ip..."
+		sed "s/{STATIC_IP}/${STATIC_IP}/" etc/user-data.static > etc/user-data
+	fi
+
+	echo "etc/user-data"
+	echo "-----------------------------------"
+	cat etc/user-data
+	echo "-----------------------------------"
+	echo "##### generate seed.img: ${SEED_IMG} #####"	
+	cloud-localds ${SEED_IMG} etc/user-data
+
+	if [ -f ${SEED_IMG} ];then
+		echo "${SEED_IMG} generate succeed"
+	else
+		echo "${SEED_IMG} generate failed"
+		exit 1
+	fi
+
+	echo "##### generate image from base_image #####"
 	qemu-img create -f qcow2 -b `pwd`/${BASE_IMAGE} $IMG
 
-	SEED_IMG="_tmp/nat/${VM_NAME}-seed.img"
-	qemu-img create -f qcow2 -b `pwd`/${BASE_SEED_IMAGE} $SEED_IMG
 
 	echo "##### list images for ${VM_NAME} #####"
 	ls _tmp/nat/${VM_NAME}*
@@ -120,18 +144,34 @@ EOF
 	sleep 10
 	echo "start waiting guest ip..."
 	cnt=0
-	while [[ "${GUEST_IP}" == "" ]]
-	do
-		if [ $cnt -gt 10 ];then
-			echo "Get guest ip timeout, quit!"
-			exit 1
-		fi
-		MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-		GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
-		echo "$cnt:waiting guest ip of mac(${MAC_ADDR})"
-		cnt=$((cnt + 1))
-		sleep 1
-	done
+	if [ -z ${STATIC_IP} ];then
+		while [[ "${GUEST_IP}" == "" ]]
+		do
+			if [ $cnt -gt 10 ];then
+				echo "Get guest ip timeout, quit!"
+				exit 1
+			fi
+			MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+			GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
+			echo "$cnt:waiting guest ip of mac(${MAC_ADDR})"
+			cnt=$((cnt + 1))
+			sleep 1
+		done
+	else
+		while [[ "${GUEST_IP}" != "${STATIC_IP}" ]];
+		do
+			if [ $cnt -gt 10 ];then
+				echo "Get guest ip timeout, quit!"
+				exit 1
+			fi
+			MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+			GUEST_IP=$(arp  | grep "${STATIC_IP}.*${MAC_ADDR}" | awk '{print $1}')
+			echo "$cnt:waiting guest ip(${STATIC_IP}) of mac(${MAC_ADDR})"
+			cnt=$((cnt + 1))
+			sleep 1
+		done
+
+	fi
 
 	echo "$cnt:get guest ip of mac(${MAC_ADDR}): ${GUEST_IP}"
 
@@ -141,7 +181,7 @@ EOF
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init.sh root@${GUEST_IP}:~
 
 	# run the script
-	ssh ${SSH_OPT} root@${GUEST_IP} ./init.sh
+	ssh ${SSH_OPT} root@${GUEST_IP} "./init.sh"
 
 	# TODO run the benchmark
 
@@ -437,7 +477,7 @@ EOF
 		fn_list $2 $3
 		;;
 	create)
-		fn_create $2 $3 #<image> <vmName>
+		fn_create $2 $3 $4 #<image> <vmName> <ip>
 		;;
 	exec)
 		fn_exec $2 "$3"  #<vmName> <command>

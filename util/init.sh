@@ -1,9 +1,10 @@
+#!/bin/bash
+
 echo "======= run in vm ========"
 if [ -f /tmp/run.log ];then
 	cat /tmp/run.log
 fi
 
-#echo "127.0.0.1 $(hostname)" >> /etc/hosts
 echo "== init =================="
 
 cat /etc/issue | grep -i -E "(centos|fedora)"
@@ -40,6 +41,8 @@ else
 	cat /etc/issue | grep -i ubuntu
 	if [ $? -eq 0 ];then
 		echo "init for ubuntu"
+
+		sleep 3
 		echo "> change apt source"
 		mv /etc/apt/sources.list /etc/apt/sources.list.bak
 		wget http://mirrors.163.com/.help/sources.list.trusty -O /etc/apt/sources.list	

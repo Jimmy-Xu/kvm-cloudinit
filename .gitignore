@@ -3,4 +3,5 @@ _base_image/
 _deps/
 _image/
 _tmp/
+etc/user-data
 
