@@ -4,7 +4,7 @@ all: init cloud-localds seed.img
 init:
 	@echo
 	@echo  "----- init  -----"
-	@mkdir -p _base_image _deps _image _tmp
+	@mkdir -p _base_image _deps _image _tmp/host _tmp/nat
 	@chmod 400 etc/.ssh/id_rsa
 
 ######################################################################

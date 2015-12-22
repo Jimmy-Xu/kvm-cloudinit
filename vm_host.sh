@@ -5,16 +5,16 @@ fn_show_usage() {
 	if [ $# -ne 2 ];then
 		cat <<EOF
 usage:
-	./vm.sh <action> <option>
+	./vm_host.sh <action> <option>
 example: 
-	./vm.sh images
-	./vm.sh create ubuntu14.04 node1 2222
-	./vm.sh list
-	./vm.sh exec node1 "top -b"
-	./vm.sh ssh node1
-	./vm.sh stop node1
-	./vm.sh start node1 2222
-	./vm.sh shutdown node1
+	./vm_host.sh images
+	./vm_host.sh create ubuntu14.04 node1 2222
+	./vm_host.sh list
+	./vm_host.sh exec node1 "top -b"
+	./vm_host.sh ssh node1
+	./vm_host.sh stop node1
+	./vm_host.sh start node1 2222
+	./vm_host.sh shutdown node1
 
 EOF
 	  exit 1
@@ -25,9 +25,9 @@ fn_create() {
 	if [ $# -ne 3 ];then
 		cat <<EOF
 usage:
-	./vm.sh create <image> <vm_name> <port>
+	./vm_host.sh create <image> <vm_name> <port>
 example:
-	./vm.sh create ubuntu14.04 node1 2222
+	./vm_host.sh create ubuntu14.04 node1 2222
 EOF
 		exit 1
 	fi
@@ -67,7 +67,7 @@ EOF
 	fi
 
 	echo "##### check the image #####"
-	if [ -f _tmp/${VM_NAME}.img -o -f _tmp/${SSH_PORT} ];then
+	if [ -f _tmp/host/${VM_NAME}.img -o -f _tmp/host/${SSH_PORT} ];then
 		echo -e "\n[error]image of ${VM_NAME} is existed, please change the vm_name, or clear the old one"
 		exit 1
 	fi	
@@ -78,14 +78,14 @@ EOF
 	# create ephemeral overlay qcow image
 	# (we probably could have used -snapshot)
 	
-	IMG="_tmp/${VM_NAME}.img"
+	IMG="_tmp/host/${VM_NAME}.img"
 	qemu-img create -f qcow2 -b `pwd`/${BASE_IMAGE} $IMG
 
-	SEED_IMG="_tmp/${VM_NAME}-seed.img"
+	SEED_IMG="_tmp/host/${VM_NAME}-seed.img"
 	qemu-img create -f qcow2 -b `pwd`/${BASE_SEED_IMAGE} $SEED_IMG
 
 	echo "##### list images for ${VM_NAME} #####"
-	ls _tmp/${VM_NAME}*
+	ls _tmp/host/${VM_NAME}*
 
 	sleep 1
 
@@ -139,7 +139,7 @@ fn_list(){
 	if [ $# -ne 0 ];then
 		cat <<EOF
 usage:
-	./vm.sh list
+	./vm_host.sh list
 EOF
 		exit 1
 	fi
@@ -147,15 +147,15 @@ EOF
 	#output
 	echo -e "vmName\toutPort\tinPort\tPID\tbacking_image"
 
-	cd _tmp
+	cd _tmp/host
 	for img in *-seed.img
 	do
 		VM_NAME=$(echo $img | cut -f1 -d"-")
-		PORT=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\t22\n", p[2]}} }')
-		PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
+		PORT=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\t22\n", p[2]}} }')
+		PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
 		
-		HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
-		BACKING_FILE=$(qemu-img info `pwd`/../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
+		HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
+		BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
 
 		echo -e "$VM_NAME\t${PORT}\t${PID}\t${BACKING_FILE}"
 	done
@@ -168,9 +168,9 @@ fn_exec(){
 	if [[ $# -ne 2 ]] || [[ -z $2 ]] ;then
 		cat <<EOF
 usage:
-	./vm.sh exec <vm_name> <command_line>
+	./vm_host.sh exec <vm_name> <command_line>
 example:
-	./vm.sh exec node1 "top -b"
+	./vm_host.sh exec node1 "top -b"
 EOF
 		exit 1
 	fi
@@ -196,14 +196,14 @@ fn_shutdown(){
 	if [ $# -ne 1 ];then
 		cat <<EOF
 usage:
-	./vm.sh shutdown <vm_name>
+	./vm_host.sh shutdown <vm_name>
 example:
-	./vm.sh shutdown node1
+	./vm_host.sh shutdown node1
 EOF
 		exit 1
 	fi
 	VM_NAME=$1
-	if [[ -f _tmp/${VM_NAME}-seed.img ]] || [[ -f _tmp/${VM_NAME}.img ]];then
+	if [[ -f _tmp/host/${VM_NAME}-seed.img ]] || [[ -f _tmp/host/${VM_NAME}.img ]];then
 		SSH_PORT=$(ps -au | grep qemu-system-x86_64 | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | grep "\-name ${VM_NAME}" | awk '{for (i=1;i<=NF;i++){if (index($i,"::22")>0){split($i,p,":");printf "%s\n", p[2]}} }')
 		echo "SSH_PORT: $SSH_PORT"
 		if [ ! -z ${SSH_PORT} ];then
@@ -214,12 +214,12 @@ EOF
 		else
 			echo "VM ${VM_NAME} not running"
 		fi
-		rm -rf _tmp/${VM_NAME}.img
-		rm -rf _tmp/${VM_NAME}-seed.img		
+		rm -rf _tmp/host/${VM_NAME}.img
+		rm -rf _tmp/host/${VM_NAME}-seed.img		
 	fi
 	
 	#check image again
-	if [[ ! -f _tmp/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/${VM_NAME}.img ]];then
+	if [[ ! -f _tmp/host/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/host/${VM_NAME}.img ]];then
 		echo "vm ${VM_NAME} not exist now"
 	else
 		echo "delete vm ${VM_NAME} failed"
@@ -230,9 +230,9 @@ fn_ssh(){
 if [ $# -ne 1 ];then
 		cat <<EOF
 usage:
-	./vm.sh ssh <vm_name>
+	./vm_host.sh ssh <vm_name>
 example:
-	./vm.sh ssh node1
+	./vm_host.sh ssh node1
 EOF
 		exit 1
 	fi
@@ -247,6 +247,8 @@ EOF
 	fi
 
 	SSH_OPT="-p${SSH_PORT} -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+	echo "ssh ${SSH_OPT} root@${GUEST_IP}"
+	echo "----------------------------------------------------------------------------------------------------------"
 	ssh ${SSH_OPT} root@localhost
 	echo -e "Goodbye!"
 
@@ -256,15 +258,15 @@ fn_stop(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
 	usage:
-		./vm.sh stop <vm_name>
+		./vm_host.sh stop <vm_name>
 	example:
-		./vm.sh stop node1
+		./vm_host.sh stop node1
 EOF
 			exit 1
 		fi
 	VM_NAME=$1
 
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
 	echo "VM_NAME: ${VM_NAME}"
 	echo "PID: ${PID}"
 	if [ -z ${PID} ];then
@@ -285,9 +287,9 @@ fn_start(){
 	if [ $# -ne 2 ];then
 			cat <<EOF
 	usage:
-		./vm.sh start <vm_name> <port>
+		./vm_host.sh start <vm_name> <port>
 	example:
-		./vm.sh start node1 2222
+		./vm_host.sh start node1 2222
 EOF
 			exit 1
 		fi
@@ -295,10 +297,10 @@ EOF
 	SSH_PORT=$2
 
 	#check image
-	if [[ ! -f _tmp/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/${VM_NAME}.img ]];then
+	if [[ ! -f _tmp/host/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/host/${VM_NAME}.img ]];then
 		echo "[error]image of VM ${VM_NAME} doesn't exist"
 		exit 1
-	elif [[ ! -f _tmp/${VM_NAME}-seed.img ]] || [[ ! -f _tmp/${VM_NAME}.img ]];then
+	elif [[ ! -f _tmp/host/${VM_NAME}-seed.img ]] || [[ ! -f _tmp/host/${VM_NAME}.img ]];then
 		echo "[error]image of VM ${VM_NAME} was damaged "
 		exit 1
 	else
@@ -306,7 +308,7 @@ EOF
 	fi
 
 	#check process
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/host/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
 	echo "VM_NAME: ${VM_NAME}"
 	echo "PID: ${PID}"
 	if [ ! -z ${PID} ];then
@@ -314,9 +316,9 @@ EOF
 		exit 1
 	fi
 
-	echo "starting VM: ${VM_NAME}  PORT: ${SSH_PORT}..."
-	IMG="_tmp/${VM_NAME}.img"
-	SEED_IMG="_tmp/${VM_NAME}-seed.img"
+	echo "starting VM: ${VM_NAME}  PORT: ${SSH_PORT}, please wait..."
+	IMG="_tmp/host/${VM_NAME}.img"
+	SEED_IMG="_tmp/host/${VM_NAME}-seed.img"
 	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -hda $IMG -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22 &
 
 
@@ -336,7 +338,7 @@ case ${ACTION} in
    #centos7
    #debian8.2
 #how to create a new vm
-  ./vm.sh create ubuntu14.04 node1 2223
+  ./vm_host.sh create ubuntu14.04 node1 2223
 EOF
 		;;
 	list)

@@ -43,23 +43,23 @@
 ### usage
 
 	## Create new VM
-	./vm.sh run node1 2222
-	./vm.sh run node2 2223
+	./vm_host.sh run node1 2222
+	./vm_host.sh run node2 2223
 
 	## Show VM list
-	./vm.sh list
+	./vm_host.sh list
 
 	## Run command line in VM though SSH
-	./vm.sh exec node1 "top -b"
+	./vm_host.sh exec node1 "top -b"
 
 	## SSH to VM
-	./vm.sh ssh node1
+	./vm_host.sh ssh node1
 
 	## Stop VM(kill qemu process, keep image file)
-	./vm.sh stop node1
+	./vm_host.sh stop node1
 
 	## Start VM from image file
-	./vm.sh start ubuntu14.04 node1 2222
+	./vm_host.sh start ubuntu14.04 node1 2222
 
 	## Shutdown VM(kill qemu process, delete image file)
-	./vm.sh shutdown node1
+	./vm_host.sh shutdown node1

@@ -5,16 +5,16 @@ fn_show_usage() {
 	if [ $# -ne 2 ];then
 		cat <<EOF
 usage:
-	./vm-swarm.sh <action> <option>
+	./vm-nat.sh <action> <option>
 example: 
-	./vm-swarm.sh images
-	./vm-swarm.sh create node1
-	./vm-swarm.sh list
-	./vm-swarm.sh exec node1 "top -b"
-	./vm-swarm.sh ssh node1
-	./vm-swarm.sh stop node1
-	./vm-swarm.sh start node1
-	./vm-swarm.sh shutdown node1
+	./vm-nat.sh images
+	./vm-nat.sh create node1
+	./vm-nat.sh list
+	./vm-nat.sh exec node1 "top -b"
+	./vm-nat.sh ssh node1
+	./vm-nat.sh stop node1
+	./vm-nat.sh start node1
+	./vm-nat.sh shutdown node1
 
 EOF
 	  exit 1
@@ -25,9 +25,9 @@ fn_create() {
 	if [ $# -ne 1 ];then
 		cat <<EOF
 usage:
-	./vm-swarm.sh create <vm_name>
+	./vm-nat.sh create <vm_name>
 example:
-	./vm-swarm.sh create node1
+	./vm-nat.sh create node1
 EOF
 		exit 1
 	fi
@@ -60,7 +60,7 @@ EOF
 	fi
 
 	echo "##### check the image #####"
-	if [ -f _tmp/${VM_NAME}.img -o -f _tmp/${SSH_PORT} ];then
+	if [ -f _tmp/nat/${VM_NAME}.img -o -f _tmp/nat/${SSH_PORT} ];then
 		echo -e "\n[error]image of ${VM_NAME} is existed, please change the vm_name, or clear the old one"
 		exit 1
 	fi	
@@ -71,14 +71,14 @@ EOF
 	# create ephemeral overlay qcow image
 	# (we probably could have used -snapshot)
 	
-	IMG="_tmp/${VM_NAME}.img"
+	IMG="_tmp/nat/${VM_NAME}.img"
 	qemu-img create -f qcow2 -b `pwd`/${BASE_IMAGE} $IMG
 
-	SEED_IMG="_tmp/${VM_NAME}-seed.img"
+	SEED_IMG="_tmp/nat/${VM_NAME}-seed.img"
 	qemu-img create -f qcow2 -b `pwd`/${BASE_SEED_IMAGE} $SEED_IMG
 
 	echo "##### list images for ${VM_NAME} #####"
-	ls _tmp/${VM_NAME}*
+	ls _tmp/nat/${VM_NAME}*
 
 	sleep 1
 
@@ -127,7 +127,7 @@ EOF
 			echo "Get guest ip timeout, quit!"
 			exit 1
 		fi
-		MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+		MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 		GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
 		echo "$cnt:waiting guest ip of mac(${MAC_ADDR})"
 		cnt=$((cnt + 1))
@@ -155,7 +155,7 @@ fn_list(){
 	if [ $# -ne 0 ];then
 		cat <<EOF
 usage:
-	./vm-swarm.sh list
+	./vm-nat.sh list
 EOF
 		exit 1
 	fi
@@ -163,18 +163,18 @@ EOF
 	#output
 	echo -e "vmName\tPID\tmac_addr\t\tguest_ip\tbacking_image"
 
-	ls _tmp/*-seed.img >/dev/null 2>&1
+	ls _tmp/nat/*-seed.img >/dev/null 2>&1
 	if [ $? -eq 0 ];then
-		cd _tmp
+		cd _tmp/nat
 		for img in `ls *-seed.img`
 		do
 			VM_NAME=$(echo $img | cut -f1 -d"-")
-			PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
+			PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
 			if [ ! -z ${PID} ];then
-				HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
-				BACKING_FILE=$(qemu-img info `pwd`/../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
+				HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
+				BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
 
-				MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+				MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 				GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
 
 				if [ -z $"GUEST_IP" ];then
@@ -192,16 +192,16 @@ fn_exec(){
 	if [[ $# -ne 2 ]] || [[ -z $2 ]] ;then
 		cat <<EOF
 usage:
-	./vm-swarm.sh exec <vm_name> <command_line>
+	./vm-nat.sh exec <vm_name> <command_line>
 example:
-	./vm-swarm.sh exec node1 "top -b"
+	./vm-nat.sh exec node1 "top -b"
 EOF
 		exit 1
 	fi
 	VM_NAME=$1
 	CMD_LINE=$2
 
-	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 	GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
 
 	SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
@@ -216,15 +216,15 @@ fn_shutdown(){
 	if [ $# -ne 1 ];then
 		cat <<EOF
 usage:
-	./vm-swarm.sh shutdown <vm_name>
+	./vm-nat.sh shutdown <vm_name>
 example:
-	./vm-swarm.sh shutdown node1
+	./vm-nat.sh shutdown node1
 EOF
 		exit 1
 	fi
 	VM_NAME=$1
-	if [[ -f _tmp/${VM_NAME}-seed.img ]] || [[ -f _tmp/${VM_NAME}.img ]];then
-		MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+	if [[ -f _tmp/nat/${VM_NAME}-seed.img ]] || [[ -f _tmp/nat/${VM_NAME}.img ]];then
+		MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 		GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
 
 		if [[ ! -z ${GUEST_IP} ]];then
@@ -235,12 +235,12 @@ EOF
 		else
 			echo "VM ${VM_NAME} not running"
 		fi
-		rm -rf _tmp/${VM_NAME}.img
-		rm -rf _tmp/${VM_NAME}-seed.img		
+		rm -rf _tmp/nat/${VM_NAME}.img
+		rm -rf _tmp/nat/${VM_NAME}-seed.img		
 	fi
 	
 	#check image again
-	if [[ ! -f _tmp/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/${VM_NAME}.img ]];then
+	if [[ ! -f _tmp/nat/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/nat/${VM_NAME}.img ]];then
 		echo "vm ${VM_NAME} not exist now"
 	else
 		echo "delete vm ${VM_NAME} failed"
@@ -251,19 +251,21 @@ fn_ssh(){
 if [ $# -ne 1 ];then
 		cat <<EOF
 usage:
-	./vm-swarm.sh ssh <vm_name>
+	./vm-nat.sh ssh <vm_name>
 example:
-	./vm-swarm.sh ssh node1
+	./vm-nat.sh ssh node1
 EOF
 		exit 1
 	fi
 	VM_NAME=$1
 	echo "VM_NAME: ${VM_NAME}"
 
-	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 	GUEST_IP=$(arp  | grep "${MAC_ADDR}" | awk '{print $1}')
 
 	SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+	echo "ssh ${SSH_OPT} root@${GUEST_IP}"
+	echo "----------------------------------------------------------------------------------------------------------"
 	ssh ${SSH_OPT} root@${GUEST_IP}
 	echo -e "Goodbye!"
 
@@ -273,15 +275,15 @@ fn_stop(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
 	usage:
-		./vm-swarm.sh stop <vm_name>
+		./vm-nat.sh stop <vm_name>
 	example:
-		./vm-swarm.sh stop node1
+		./vm-nat.sh stop node1
 EOF
 			exit 1
 		fi
 	VM_NAME=$1
 
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
 	echo "VM_NAME: ${VM_NAME}"
 	echo "PID: ${PID}"
 	if [ -z ${PID} ];then
@@ -302,19 +304,19 @@ fn_start(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
 	usage:
-		./vm-swarm.sh start <vm_name>
+		./vm-nat.sh start <vm_name>
 	example:
-		./vm-swarm.sh start node1
+		./vm-nat.sh start node1
 EOF
 			exit 1
 		fi
 	VM_NAME=$1
 
 	#check image
-	if [[ ! -f _tmp/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/${VM_NAME}.img ]];then
+	if [[ ! -f _tmp/nat/${VM_NAME}-seed.img ]] && [[ ! -f _tmp/nat/${VM_NAME}.img ]];then
 		echo "[error]image of VM ${VM_NAME} doesn't exist"
 		exit 1
-	elif [[ ! -f _tmp/${VM_NAME}-seed.img ]] || [[ ! -f _tmp/${VM_NAME}.img ]];then
+	elif [[ ! -f _tmp/nat/${VM_NAME}-seed.img ]] || [[ ! -f _tmp/nat/${VM_NAME}.img ]];then
 		echo "[error]image of VM ${VM_NAME} was damaged "
 		exit 1
 	else
@@ -322,7 +324,7 @@ EOF
 	fi
 
 	#check process
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
 	echo "VM_NAME: ${VM_NAME}"
 	echo "PID: ${PID}"
 	if [ ! -z ${PID} ];then
@@ -330,9 +332,9 @@ EOF
 		exit 1
 	fi
 
-	echo "starting VM: ${VM_NAME}  "
-	IMG="_tmp/${VM_NAME}.img"
-	SEED_IMG="_tmp/${VM_NAME}-seed.img"
+	echo "starting VM: ${VM_NAME}, please wait..."
+	IMG="_tmp/nat/${VM_NAME}.img"
+	SEED_IMG="_tmp/nat/${VM_NAME}-seed.img"
 
 	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
 	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=virbr0 -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
@@ -353,7 +355,7 @@ case ${ACTION} in
    #centos7
    #debian8.2
 #how to create a new vm
-  ./vm-swarm.sh create ubuntu14.04 node1 2223
+  ./vm-nat.sh create ubuntu14.04 node1 2223
 EOF
 		;;
 	list)
