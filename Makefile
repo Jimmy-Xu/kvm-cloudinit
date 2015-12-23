@@ -1,4 +1,4 @@
-all: init cloud-localds seed.img
+all: init cloud-localds
 
 # init
 init:
@@ -92,10 +92,10 @@ cloud-localds:
 	fi
 
 # convert user data into an ISO image
-seed.img: etc/user-data
-	@echo
-	@echo "----- convert user data into an ISO image -----"
-	@cloud-localds _image/seed.img etc/user-data
+# seed.img: etc/user-data
+# 	@echo
+# 	@echo "----- convert user data into an ISO image -----"
+# 	@cloud-localds _image/seed.img etc/user-data
 
 # # build a qcow layer
 # play-trusty.img: ubuntu-14.04-server-cloudimg-amd64-disk1.img
