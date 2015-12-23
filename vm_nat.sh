@@ -108,15 +108,38 @@ EOF
 
 	sleep 1
 
+	echo "##### check bridge: ${BR} #####"
+	
+	ip addr | grep  " ${BR}:" 
+	if [ $? -ne 0 ];then
+		echo "bridge device ${BR} not found"
+		exit 1
+	fi
+
+	if [ ! -f /etc/qemu/bridge.conf ];then
+		cat <<EOF
+	/etc/qemu/bridge.conf not found, please create it first
+	$ sudo -s
+	# echo 'allow `echo ${BR}`' > /etc/qemu/bridge.conf
+EOF
+	fi
+
+	grep "allow ${BR}" /etc/qemu/bridge.conf
+	if [ $? -ne 0 ];then
+		cat <<EOF
+	${BR} not allow in /etc/qemu/bridge.conf, please run the following command first:
+	$ sudo -s
+	# echo 'allow `echo ${BR}`' > /etc/qemu/bridge.conf
+	exit
+EOF
+	fi
+	echo "bridge ${BR} is available"
+	echo "##### generate mac address#####"
+	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
+	
 	echo -e "\n##### start the VM #####"
 	# way1
-	cat <<EOF
-	if can not use virbr0, please run the following command first:
-	$ sudo -s
-	# echo 'allow virbr0' > /etc/qemu/bridge.conf
-EOF
-	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
-	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=virbr0 -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
+	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=${BR} -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
 
 	#sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -drive file=${IMG},if=virtio -boot c -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22&
 	
@@ -390,7 +413,7 @@ EOF
 	SEED_IMG="_tmp/nat/${VM_NAME}-seed.img"
 
 	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
-	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=virbr0 -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
+	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=${BR} -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
 
 }
 
@@ -528,6 +551,9 @@ EOF
 }
 
 ## main ###################################################
+
+BR="virbr0"
+
 ACTION=$1
 case ${ACTION} in
 	images)

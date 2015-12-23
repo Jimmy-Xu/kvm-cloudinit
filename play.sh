@@ -16,6 +16,7 @@ cloud-localds ${SEED_IMG} etc/user-data
 
 # start the VM
 echo "----- create vm -----"
+sudo pwd
 sudo qemu-system-x86_64 -name ${IMG} -enable-kvm -net nic -net user -hda $IMG -hdb ${SEED_IMG} -m 1G -nographic -redir :2222::22 &
 
 # remove the overlay (qemu will keep it open as needed)
