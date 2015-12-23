@@ -187,7 +187,7 @@ EOF
 	sleep 15
 	echo "start waiting guest ip..."
 	cnt=0
-	WAIT_IP_TIMEOUT=30
+	WAIT_IP_TIMEOUT=60
 	if [ -z ${STATIC_IP} ];then
 		while [[ "${GUEST_IP}" == "" ]]
 		do
