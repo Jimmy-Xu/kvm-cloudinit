@@ -30,17 +30,6 @@ if [ $? -eq 0 ];then
 	fi
 	sed -r -i "s@.*other_args=.*@other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" /etc/sysconfig/docker
 
-	echo "> restart docker daemon"
-	service docker restart
-
-	echo "> pull docker images: busybox swarm"
-	sleep 2
-	docker pull busybox
-	docker pull swarm
-
-	echo "> test busybox"
-	docker run -it --rm busybox uname -a
-
 else
 	cat /etc/issue | grep -i ubuntu
 	if [ $? -eq 0 ];then
@@ -61,20 +50,27 @@ else
 		sed -r -i "s@.*export http_proxy=.*@export http_proxy='http://${HOST_IP}:8118/'@" /etc/default/docker
 		sed -r -i "s@.*DOCKER_OPTS=.*@DOCKER_OPTS='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" /etc/default/docker
 
-		echo "> restart docker daemon"
-		service docker restart
-
-		echo "> pull busybox image"
-		sleep 2
-		docker pull busybox
-
-		echo "> test busybox"
-		docker run -i --rm busybox uname -a
 	else
 		echo "unknown os distro"
 		cat /etc/issue
 		exit 1
 	fi
+fi
+
+docker info
+if [ $? -eq 0 ];then
+	echo "> restart docker daemon"
+	service docker restart
+
+	echo "> pull busybox image"
+	sleep 2
+	docker pull busybox
+	docker pull swarm
+
+	echo "> test busybox"
+	docker run -i --rm busybox uname -a
+else
+	echo "docker daemon isn't running:("
 fi
 
 echo "> show ip info"

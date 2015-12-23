@@ -109,10 +109,23 @@
 	
 ###4.1 [docker client]access remote docker swarm by -H
 
+	# view by swarm (manager)
 	$ docker -H 192.168.122.128:23750 images
-	REPOSITORY   TAG      IMAGE ID        CREATED        VIRTUAL SIZE
-	busybox      latest   ac6a7980c6c2    13 days ago    1.113 MB
-	swarm        latest   a9975e2cc0a3    12 days ago    17.15 MB
+	REPOSITORY   TAG      IMAGE ID       CREATED       VIRTUAL SIZE
+	swarm        latest   a9975e2cc0a3   13 days ago   17.15 MB
+	busybox      latest   ac6a7980c6c2   2 weeks ago   1.113 MB
+
+	# view by node1(docker host)
+	$ docker -H 192.168.122.129:2375 images
+	REPOSITORY   TAG      IMAGE ID       CREATED       VIRTUAL SIZE
+	swarm        latest   a9975e2cc0a3   13 days ago   17.15 MB
+	busybox      latest   ac6a7980c6c2   2 weeks ago   1.113 MB
+
+	# view by node2(docker host)
+	$ docker -H 192.168.122.130:2375 images
+	REPOSITORY   TAG      IMAGE ID       CREATED       VIRTUAL SIZE
+	swarm        latest   a9975e2cc0a3   13 days ago   17.15 MB
+	busybox      latest   ac6a7980c6c2   2 weeks ago   1.113 MB
 
 
 
@@ -132,6 +145,13 @@
 	Using default tag: latest
 	node2: Pulling nginx:latest... : downloaded 
 	node1: Pulling nginx:latest... : downloaded 
+
+
+	$ docker images
+	REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
+	nginx               latest              5328fdfe9b8e        6 days ago          133.9 MB
+	swarm               latest              a9975e2cc0a3        13 days ago         17.15 MB
+	busybox             latest              ac6a7980c6c2        2 weeks ago         1.113 MB
 
 
 	$ docker ps -a
