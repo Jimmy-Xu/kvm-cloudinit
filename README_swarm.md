@@ -261,4 +261,8 @@
 	busybox       latest   ac6a7980c6c2   2 weeks ago   1.113 MB
 
 #6 Manager Swarm Cluster
+
+	
+#7 Add / Remove node in Swarm Cluster
+
 	

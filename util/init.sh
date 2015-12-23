@@ -26,9 +26,12 @@ if [ $? -eq 0 ];then
 	if [ $? -eq 0 ];then
 		sed -r -i "s@.*http_proxy=.*@http_proxy='http://${HOST_IP}:8118/'@" /etc/sysconfig/docker
 	else
-		echo "http_proxy='http://${HOST_IP}:8118/" >> /etc/sysconfig/docker	
+		echo "http_proxy='http://${HOST_IP}:8118/'" >> /etc/sysconfig/docker	
 	fi
 	sed -r -i "s@.*other_args=.*@other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" /etc/sysconfig/docker
+
+	echo "> restart docker daemon"
+	service docker restart
 
 else
 	cat /etc/issue | grep -i ubuntu
@@ -50,6 +53,9 @@ else
 		sed -r -i "s@.*export http_proxy=.*@export http_proxy='http://${HOST_IP}:8118/'@" /etc/default/docker
 		sed -r -i "s@.*DOCKER_OPTS=.*@DOCKER_OPTS='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" /etc/default/docker
 
+		echo "> restart docker daemon"
+		service docker restart
+
 	else
 		echo "unknown os distro"
 		cat /etc/issue
@@ -59,8 +65,6 @@ fi
 
 docker info
 if [ $? -eq 0 ];then
-	echo "> restart docker daemon"
-	service docker restart
 
 	echo "> pull busybox image"
 	sleep 2

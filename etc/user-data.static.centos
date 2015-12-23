@@ -1,0 +1,49 @@
+#cloud-config
+
+hostname: {HOSTNAME}
+users:
+  - name: root
+    gecos: Jimmy Xu
+    groups: root
+    lock_passwd: false
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    #generate passwd: mkpasswd --method=SHA-512 --rounds=4096 (plain passwd: aaa123aa)
+    passwd: $6$rounds=4096$LiIq3Q3/c64erfZ4$bWHRJl.sjWTmUp01sCJBGM5tRMnx43ikjF3ckbvl75Fswbgdl1v1mgveD3fCP4W1q.rWbrt6BTiofcHnG3KFP/
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCp4xR1QBtsBW56Cws4T1ZeyqLEz749qzf06DxQxPblcuMA5+RaC7pTtvbfQAOD2Qyjn1yxRtA0gOwIQcmG7RS4wW817IBvIZCfZG8HIuRl53iUnmRHFHRF+F9xOSOf2NnWtLbRhJwCxxbYo6RfjdxglGfLtZQ3bgx+tAIaB7v6sZkvpxX469dmYxPu2jEbSBVSgPC6Ih7jfrkF4SUN67EyhntQt2EzMI1pZ1kX41ytxE9zjuKp/r3D8NiBu1zlbBsBf/+OJWnjZwL5vjx73nze6ntqus7STmkZMVUh9B+dDKNUtO2O2Q/Otm/aDw3PKiDU6a+rJQ89w6jnRIfcbpnr root@mini-ubuntu
+
+bootcmd:
+    - echo "===== bootcmd ====="
+    - echo "127.0.0.1 {HOSTNAME}" >> /etc/hosts
+    - echo "bootcmd:$(date +'%F %T')" > /tmp/run.log
+    - echo "===== init eth0(static ip)  ====="
+    - service network stop
+    - echo 'DEVICE="eth0"' > /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'BOOTPROTO="none"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'IPV6INIT="no"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'MTU="1500"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'ONBOOT="yes"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'TYPE="Ethernet"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'IPADDR={STATIC_IP}' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'NETWORK="{NETWORK_PREFIX}.0"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'NETMASK="255.255.255.0"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'NM_CONTROLLED="no"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    #- echo 'UUID="3f92192e-7765-4488-9746-41d7cc477dd0"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - service network start
+    - echo "===== bootcmd  ====="
+
+runcmd:
+    - echo "===== runcmd ====="
+    - echo "runcmd :$(date +'%F %T')" >> /tmp/run.log
+    - netstat -tnopl
+    - ps -ef | grep sshd
+    - service sshd status
+    - ifconfig
+    - ip route
+    - echo "===== runcmd ====="
+    - cat /etc/sysconfig/network-scripts/ifcfg-eth0
+    - ip route
+    - ip addr flush dev eth0 && sleep 1 && ifconfig eth0 {STATIC_IP}/24 up && route add default gw {NETWORK_PREFIX}.1
+
+final_message: "VM started..."
