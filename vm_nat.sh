@@ -131,6 +131,7 @@ EOF
 	$ sudo -s
 	# echo 'allow `echo ${BR}`' > /etc/qemu/bridge.conf
 EOF
+		exit 1
 	fi
 
 	grep "allow ${BR}" /etc/qemu/bridge.conf
@@ -139,9 +140,10 @@ EOF
 	${BR} not allow in /etc/qemu/bridge.conf, please run the following command first:
 	$ sudo -s
 	# echo 'allow `echo ${BR}`' > /etc/qemu/bridge.conf
-	exit
 EOF
+		exit 1
 	fi
+
 	echo "bridge ${BR} is available"
 	echo "##### generate mac address#####"
 	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
