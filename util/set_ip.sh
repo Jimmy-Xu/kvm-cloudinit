@@ -6,8 +6,9 @@ if [ $? -ne 0 ];then
 	exit 1
 fi
 
-NETWORK_PREFIX="192.168.122"
-#NETWORK_PREFIX="192.168.1"
+echo "read from config"
+NETWORK_PREFIX=$(grep NETWORK_PREFIX config | cut -d"=" -f2)
+
 
 if [ $# -eq 1 ];then
 

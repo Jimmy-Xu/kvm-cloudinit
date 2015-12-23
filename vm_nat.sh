@@ -1,11 +1,12 @@
 #!/bin/bash
 
-BR="virbr0"
-NETWORK_PREFIX="192.168.122"
-
-#BR="br0"
-#NETWORK_PREFIX="192.168.1"
-
+echo "read from etc/config"
+echo "----------------------------------"
+BR=$(grep BR etc/config | cut -d"=" -f2)
+NETWORK_PREFIX=$(grep NETWORK_PREFIX etc/config | cut -d"=" -f2)
+echo "BR            : ${BR}"
+echo "NETWORK_PREFIX: ${NETWORK_PREFIX}"
+echo "----------------------------------"
 
 fn_show_usage() {
 	if [ $# -ne 2 ];then
@@ -221,6 +222,7 @@ EOF
 	SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
 
 	# copy a script in (we could use Ansible for this kind of thing, but...)
+	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./etc/config root@${GUEST_IP}:~
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init.sh root@${GUEST_IP}:~
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/set_ip.sh root@${GUEST_IP}:~
 

@@ -7,8 +7,8 @@ fi
 
 echo "== init =================="
 
-HOST_IP="192.168.122.1"
-#HOST_IP="192.168.1.141"
+echo "read from config"
+HOST_IP=$(grep HOST_IP config | cut -d"=" -f2)
 
 cat /etc/issue | grep -i -E "(centos|fedora)"
 if [ $? -eq 0 ];then
