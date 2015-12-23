@@ -162,3 +162,20 @@
 	CPUs: 2
 	Total Memory: 2.038 GiB
 	Name: 379c729f9199
+
+
+#5 Start swarm cluster after vm reboot
+
+	start container on node1, node2 -> start container on swarm
+
+	# [host]start container on each vm
+	./vm_nat.sh exec node1 "docker start 8ae"
+	./vm_nat.sh exec node2 "docker start 379"
+	./vm_nat.sh exec swarm "docker start e3b"
+
+	# [docker client]set DOCKER_HOST
+	$ export DOCKER_HOST=192.168.122.128:23750
+	$ docker images
+	REPOSITORY    TAG      IMAGE ID       CREATED       VIRTUAL SIZE
+	swarm         latest   a9975e2cc0a3   13 days ago   17.15 MB
+	busybox       latest   ac6a7980c6c2   2 weeks ago   1.113 MB
