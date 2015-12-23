@@ -4,4 +4,5 @@ _deps/
 _image/
 _tmp/
 etc/user-data
+*tmp*.img
 

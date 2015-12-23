@@ -1,33 +1,51 @@
 #!/bin/bash
 
-#make ubuntu-13.10-server-cloudimg-amd64-disk1.img seed.img
-make ubuntu14.04
+make ubuntu14.04 
 
 # create ephemeral overlay qcow image
 # (we probably could have used -snapshot)
-IMG=`mktemp _tmp/tmpXXX.img`
-#qemu-img create -f qcow2 -b ubuntu-13.10-server-cloudimg-amd64-disk1.img $IMG
+IMG=`mktemp tmpXXX.img`
+SEED_IMG="seed-${IMG}"
+echo "----- create temp image image: $IMG -----"
 qemu-img create -f qcow2 -b `pwd`/_base_image/ubuntu14.04.img $IMG
 
+echo "----- convert user data into an ISO image: ${SEED_IMG} -----"
+sed "s/{HOSTNAME}/${TMP}/" etc/user-data.dhcp > etc/user-data
+cloud-localds ${SEED_IMG} etc/user-data
+
+
 # start the VM
-sudo qemu-system-x86_64 -enable-kvm -net nic -net user -hda $IMG -hdb _image/seed.img -m 1G -nographic -redir :2222::22 &
-#qemu-system-x86_64 -enable-kvm -net nic,model=virtio,macaddr=00:16:3e:3a:c0:99 -net tap,ifname=vnet10,script=no,downscript=no -hda $IMG -hdb _image/seed.img -m 1G -nographic -redir :2222::22 &
+echo "----- create vm -----"
+sudo qemu-system-x86_64 -name ${IMG} -enable-kvm -net nic -net user -hda $IMG -hdb ${SEED_IMG} -m 1G -nographic -redir :2222::22 &
 
 # remove the overlay (qemu will keep it open as needed)
-sleep 3
-rm $IMG
+sleep 2
+rm -rf $IMG $SEED_IMG
 
 
-SSH_OPT="-p2222 -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+SSH_OPT="-p2222 -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+
+#check ip
+echo "check guest ip"
+cnt=1
+ssh ${SSH_OPT} root@localhost ifconfig
+while [[ $? -ne 0 ]]
+do
+	echo "$cnt: waiting for guest ip..."
+	sleep 1
+	cnt=$((cnt + 1))
+	ssh ${SSH_OPT} root@localhost ifconfig
+done
+
 
 # copy a script in (we could use Ansible for this kind of thing, but...)
+echo "copy test.sh to vm..."
 rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/test.sh root@localhost:~
 
 # run the script
+echo "run test.sh..."
 ssh ${SSH_OPT} root@localhost ./test.sh
 
-# TODO run the benchmark
-
 # shut down the VM
-ssh ${SSH_OPT} root@localhost sudo shutdown -h now
-
+echo "shutdown vm..."
+ssh ${SSH_OPT} root@localhost shutdown -h now
