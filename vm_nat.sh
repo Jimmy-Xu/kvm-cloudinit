@@ -195,7 +195,7 @@ EOF
 				echo "Get guest ip timeout, quit!"
 				exit 1
 			fi
-			MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+			MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 			echo "$cnt:waiting guest ip of mac(${MAC_ADDR})"
 			cnt=$((cnt + 1))
@@ -208,7 +208,7 @@ EOF
 				echo "Get guest ip timeout, quit!"
 				exit 1
 			fi
-			MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+			MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp  | grep "${STATIC_IP}.*${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 			echo "$cnt:waiting guest ip(${STATIC_IP}) of mac(${MAC_ADDR})"
 			cnt=$((cnt + 1))
@@ -257,12 +257,12 @@ EOF
 			MAC_ADDR=""
 			GUEST_IP=""
 			BACKING_FILE=""
-			PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
+			PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
 			if [ ! -z ${PID} ];then
-				HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
+				HDA_IMG=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
 				BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
 
-				MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+				MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 				GUEST_IP=$(sudo arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 				if [ -z ${GUEST_IP} ];then
@@ -289,15 +289,18 @@ EOF
 	VM_NAME=$1
 	CMD_LINE=$2
 
-	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-	GUEST_IP=$(sudo arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
-
-	SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
-	echo "-----------------------------------------------------------------------------------------------------------------------------------------"
-	echo "> ssh ${SSH_OPT} root@${GUEST_IP} \"bash -c '${CMD_LINE}'\""
-	echo "-----------------------------------------------------------------------------------------------------------------------------------------"
-	ssh ${SSH_OPT} root@${GUEST_IP} "bash -c '${CMD_LINE}'"
-	echo "-----------------------------------------------------------------------------------------------------------------------------------------"
+	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+	if [ ! -z ${MAC_ADDR} ];then
+		GUEST_IP=$(sudo arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
+		SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+		echo "-----------------------------------------------------------------------------------------------------------------------------------------"
+		echo "> ssh ${SSH_OPT} root@${GUEST_IP} \"bash -c '${CMD_LINE}'\""
+		echo "-----------------------------------------------------------------------------------------------------------------------------------------"
+		ssh ${SSH_OPT} root@${GUEST_IP} "bash -c '${CMD_LINE}'"
+		echo "-----------------------------------------------------------------------------------------------------------------------------------------"
+	else
+		echo "vm name '${VM_NAME}' not found"
+	fi
 }
 
 fn_shutdown(){
@@ -312,7 +315,7 @@ EOF
 	fi
 	VM_NAME=$1
 	if [[ -f _tmp/nat/${VM_NAME}-seed.img ]] || [[ -f _tmp/nat/${VM_NAME}.img ]];then
-		MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+		MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 		GUEST_IP=$(sudo arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 		if [[ ! -z ${GUEST_IP} ]];then
@@ -334,7 +337,7 @@ EOF
 		echo "delete vm ${VM_NAME} failed"
 	fi
 
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}"  | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} "  | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
 	for p in $PID
 	do
 		ps -au | grep " ${p} .*_tmp/nat/" | grep -Ev "(sudo|grep)" | awk -v p=$p  '{if($2==p){print $0}}'
@@ -353,16 +356,21 @@ EOF
 		exit 1
 	fi
 	VM_NAME=$1
-	echo "VM_NAME: ${VM_NAME}"
+	
+	#echo "VM_NAME: ${VM_NAME}"
 
-	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
-	GUEST_IP=$(sudo arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
+	MAC_ADDR=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,66)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+	if  [ ! -z ${MAC_ADDR} ];then
+		GUEST_IP=$(sudo arp  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
-	SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
-	echo "ssh ${SSH_OPT} root@${GUEST_IP}"
-	echo "----------------------------------------------------------------------------------------------------------"
-	ssh ${SSH_OPT} root@${GUEST_IP}
-	echo -e "Goodbye!"
+		SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+		echo "ssh ${SSH_OPT} root@${GUEST_IP}"
+		echo "----------------------------------------------------------------------------------------------------------"
+		ssh ${SSH_OPT} root@${GUEST_IP}
+		echo -e "Goodbye!"
+	else
+		echo "vm name '${VM_NAME}' not found"
+	fi
 
 }
 
@@ -378,11 +386,11 @@ EOF
 		fi
 	VM_NAME=$1
 
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
-	echo "VM_NAME: ${VM_NAME}"
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	#echo "VM_NAME: ${VM_NAME}"
 	echo "PID: ${PID}"
 	if [ -z ${PID} ];then
-		echo "can not find pid of vmName: ${VM_NAME}"
+		echo "can not find pid of vm name: ${VM_NAME}"
 		exit 1
 	fi
 
@@ -419,7 +427,7 @@ EOF
 	fi
 
 	#check process
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
 	echo "VM_NAME: ${VM_NAME}"
 	echo "PID: ${PID}"
 	if [ ! -z ${PID} ];then
@@ -472,7 +480,7 @@ EOF
 	fi
 
 	#check process
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
 	echo "VM_NAME: ${VM_NAME}"
 	echo "PID: ${PID}"
 	if [ ! -z ${PID} ];then
@@ -539,7 +547,7 @@ EOF
 	fi
 
 	#check process
-	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME}" | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
+	PID=$(ps -au | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" |awk '{print $2}')
 	echo "VM_NAME: ${VM_NAME}"
 	echo "PID: ${PID}"
 	if [ ! -z ${PID} ];then
