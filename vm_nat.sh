@@ -102,7 +102,7 @@ EOF
 	echo "##### generate mac address#####"
 	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
 	
-	
+
 	
 	echo ##### prepare image #####"
 	make ${BASE_IMAGE}
@@ -183,13 +183,14 @@ EOF
 	#rm $IMG
 	#rm $SEED_IMG
 
-	sleep 10
+	sleep 15
 	echo "start waiting guest ip..."
 	cnt=0
+	WAIT_IP_TIMEOUT=30
 	if [ -z ${STATIC_IP} ];then
 		while [[ "${GUEST_IP}" == "" ]]
 		do
-			if [ $cnt -gt 10 ];then
+			if [ $cnt -gt ${WAIT_IP_TIMEOUT} ];then
 				echo "Get guest ip timeout, quit!"
 				exit 1
 			fi
@@ -202,7 +203,7 @@ EOF
 	else
 		while [[ "${GUEST_IP}" != "${STATIC_IP}" ]];
 		do
-			if [ $cnt -gt 10 ];then
+			if [ $cnt -gt ${WAIT_IP_TIMEOUT} ];then
 				echo "Get guest ip timeout, quit!"
 				exit 1
 			fi
