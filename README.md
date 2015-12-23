@@ -1,18 +1,10 @@
-#image
-	# get images
+#OS Image(include cloud-init)
+	
+	# get cloud images
 	http://docs.openstack.org/zh_CN/image-guide/content/ch_obtaining_images.html
-
-	#ubuntu15.10(qcow2)
-	http://cloud-images.ubuntu.com/releases/15.10/release-20151203/ubuntu-15.10-server-cloudimg-amd64-disk1.img
 
 	#ubuntu14.04(qcow2)
 	http://cloud-images.ubuntu.com/releases/14.04/release-20151217/ubuntu-14.04-server-cloudimg-amd64-disk1.img
-
-	#debian(qcow2)
-	http://cdimage.debian.org/cdimage/openstack/8.2.0/debian-8.2.0-openstack-amd64.qcow2
-
-	#centos7(qcow2.xz)
-	http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1510.qcow2.xz
 
 	#centos6(qcow2.xz)
 	http://cloud.centos.org/centos/6.6/images/CentOS-6-x86_64-GenericCloud-1510.qcow2.xz
@@ -23,29 +15,44 @@
 	#fedora22(qcow2.xz)
 	http://mirrors.ustc.edu.cn/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Base-22-20150521.x86_64.raw.xz
 
-#usage
 
-### prepare
 
-	#install cloud-localds, generate seed.img
+#Usage
+
+### Prepare VM
+
+	#prepare dir, install cloud-localds
 	make
 
-	#download os image
+	#download cloud image
 	make ubuntu14.04
-	make help # show all os image list
+	make help # show all cloud image list
 
 
-### for test
+### Test kvm environment
 
 	./play.sh
 
 
-### usage(nat, use ip)
+### Usage
 
 #### Basic Usage
 
+	## config network and bridge
+	vi etc/config
+	### for NAT network
+	BR=virbr0
+	NETWORK_PREFIX=192.168.122
+	HOST_IP=192.168.122.1
+	### for Bridge network
+	BR=br0
+	NETWORK_PREFIX=192.168.1
+	HOST_IP=192.168.1.141
+
 	## Create new VM
+	### dhcp
 	./vm_nat.sh create ubuntu14.04 node1
+	### static ip
 	./vm_nat.sh create ubuntu14.04 node2 192.168.122.128
 
 	## Show VM list
@@ -65,9 +72,9 @@
 	## Shutdown VM(kill qemu process, delete image file)
 	./vm_nat.sh shutdown node1
 
-#### Example: Clone vm
+#### Example: Clone vm (node1 -> node2)
 
-	stop -> clone -> change src_vm ip -> start src_vm -> start tgt_vm 
+	stop -> clone -> change ip of src_vm -> start src_vm -> start tgt_vm 
 	
 	## Stop node1
 	$ ./vm_nat.sh stop node1
@@ -82,8 +89,8 @@
 	$ ./vm_nat.sh ssh node1
 	
 	##run the following command in vm
-	root@ubuntu:~# ./set_ip.sh 192.168.122.200
-	root@ubuntu:~# exit
+	root@node1:~# ./set_ip.sh 192.168.122.200
+	root@node1:~# exit
 
 	## Stop VM(kill qemu process, keep image file)
 	$ ./vm_nat.sh stop node1
@@ -109,7 +116,7 @@
 	Using default tag: latest
 
 	## run container
-	$ docker -H 192.168.122.128:2375 run -it busybox uname -a
+	$ docker -H 192.168.122.128:2375 run -it --rm busybox uname -a
 	Linux b7e3cbe32ab3 3.13.0-73-generic #116-Ubuntu SMP Fri Dec 4 15:31:30 UTC 2015 x86_64 GNU/Linux
 
 	## set env
@@ -118,49 +125,16 @@
 	
 	# show images (1)
 	$ docker images
-	REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
-	swarm               latest              a9975e2cc0a3        12 days ago         17.15 MB
-	busybox             latest              ac6a7980c6c2        13 days ago         1.113 MB
+	REPOSITORY   TAG      IMAGE ID       CREATED       VIRTUAL SIZE
+	swarm        latest   a9975e2cc0a3   12 days ago   17.15 MB
+	busybox      latest   ac6a7980c6c2   13 days ago   1.113 MB
 
 	# show images (2)
 	$./vm_nat.sh exec node2 "docker images"
 	---------------------------------------------------------------------------------------------------------------------------
 	> ssh -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no  root@192.168.122.128 "bash -c 'docker images'"
 	---------------------------------------------------------------------------------------------------------------------------
-	REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
-	swarm               latest              a9975e2cc0a3        12 days ago         17.15 MB
-	busybox             latest              ac6a7980c6c2        13 days ago         1.113 MB
+	REPOSITORY    TAG       IMAGE ID        CREATED       VIRTUAL SIZE
+	swarm         latest    a9975e2cc0a3    12 days ago   17.15 MB
+	busybox       latest    ac6a7980c6c2    13 days ago   1.113 MB
 	---------------------------------------------------------------------------------------------------------------------------
-
-
-### usage(host, use port)
-
-	## Create new VM
-	$ ./vm_host.sh create ubuntu14.04 node3 2223
-
-	## Show VM list
-	$ ./vm_host.sh list
-	vmName	port	PID		backing_image
-	node3	2223	3539	ubuntu14.04.img
-
-	## Run command line in VM though SSH
-	$ ./vm_host.sh exec node1 "uname -a"
-	---------------------------------------------------------------------------------------------------------------------------
-	> ssh -p2223 -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no  root@localhost "bash -c 'uname -a'"
-	---------------------------------------------------------------------------------------------------------------------------
-	Linux ubuntu 3.13.0-73-generic #116-Ubuntu SMP Fri Dec 4 15:31:30 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
-	---------------------------------------------------------------------------------------------------------------------------
-
-
-	## SSH to VM
-	$ ./vm_host.sh ssh node1
-
-	## Stop VM(kill qemu process, keep image file)
-	$ ./vm_host.sh stop node1
-
-	## Start VM from image file
-	$ ./vm_host.sh start node1 2222
-
-	## Shutdown VM(kill qemu process, delete image file)
-	$ ./vm_host.sh shutdown node1
-

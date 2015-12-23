@@ -11,17 +11,28 @@ echo "----------------------------------"
 fn_show_usage() {
 	if [ $# -ne 2 ];then
 		cat <<EOF
-usage:
-	./vm-nat.sh <action> <option>
-example: 
-	./vm-nat.sh images
-	./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
-	./vm-nat.sh list
-	./vm-nat.sh exec node1 "top -b"
-	./vm-nat.sh ssh node1
-	./vm-nat.sh stop node1
-	./vm-nat.sh start node1
-	./vm-nat.sh shutdown node1
+[usage]
+  
+    ./vm-nat.sh <action> <options>
+
+[example]
+
+    ./vm-nat.sh images
+    ./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
+    ./vm-nat.sh list
+    ./vm-nat.sh exec node1 "top -b"
+    ./vm-nat.sh ssh node1
+    ./vm-nat.sh stop node1
+    ./vm-nat.sh start node1
+    ./vm-nat.sh shutdown node1
+
+[usage]
+
+# how to create a new vm(dhcp)
+    ./vm-nat.sh create ubuntu14.04 node1
+
+# how to create a new vm(static ip)
+    ./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
 
 EOF
 	  exit 1
@@ -31,10 +42,10 @@ EOF
 fn_create() {
 	if [ $# -lt 2 ];then
 		cat <<EOF
-usage:
-	./vm-nat.sh create <image> <vm_name> <ip>
-example:
-	./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
+[usage]
+    ./vm-nat.sh create <image> <vm_name> <ip>
+[example]
+    ./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
 EOF
 		exit 1
 	fi
@@ -239,8 +250,8 @@ EOF
 fn_list(){
 	if [ $# -ne 0 ];then
 		cat <<EOF
-usage:
-	./vm-nat.sh list
+[usage]
+    ./vm-nat.sh list
 EOF
 		exit 1
 	fi
@@ -279,10 +290,10 @@ EOF
 fn_exec(){
 	if [[ $# -ne 2 ]] || [[ -z $2 ]] ;then
 		cat <<EOF
-usage:
-	./vm-nat.sh exec <vm_name> <command_line>
-example:
-	./vm-nat.sh exec node1 "top -b"
+[usage]
+    ./vm-nat.sh exec <vm_name> <command_line>
+[example]
+    ./vm-nat.sh exec node1 "top -b"
 EOF
 		exit 1
 	fi
@@ -306,10 +317,10 @@ EOF
 fn_shutdown(){
 	if [ $# -ne 1 ];then
 		cat <<EOF
-usage:
-	./vm-nat.sh shutdown <vm_name>
-example:
-	./vm-nat.sh shutdown node1
+[usage]
+    ./vm-nat.sh shutdown <vm_name>
+[example]
+    ./vm-nat.sh shutdown node1
 EOF
 		exit 1
 	fi
@@ -348,10 +359,10 @@ EOF
 fn_ssh(){
 if [ $# -ne 1 ];then
 		cat <<EOF
-usage:
-	./vm-nat.sh ssh <vm_name>
-example:
-	./vm-nat.sh ssh node1
+[usage]
+    ./vm-nat.sh ssh <vm_name>
+[example]
+    ./vm-nat.sh ssh node1
 EOF
 		exit 1
 	fi
@@ -377,10 +388,10 @@ EOF
 fn_stop(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
-	usage:
-		./vm-nat.sh stop <vm_name>
-	example:
-		./vm-nat.sh stop node1
+[usage]
+    ./vm-nat.sh stop <vm_name>
+[example]
+    ./vm-nat.sh stop node1
 EOF
 			exit 1
 		fi
@@ -406,10 +417,10 @@ EOF
 fn_start(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
-	usage:
-		./vm-nat.sh start <vm_name>
-	example:
-		./vm-nat.sh start node1
+[usage]
+    ./vm-nat.sh start <vm_name>
+[example]
+    ./vm-nat.sh start node1
 EOF
 			exit 1
 		fi
@@ -448,10 +459,10 @@ fn_clone(){
 
 	if [ $# -ne 2 ];then
 			cat <<EOF
-	usage:
-		./vm-nat.sh clone <source_vm_name> <target_vm_name>
-	example:
-		./vm-nat.sh clone node1 node2
+[usage]
+    ./vm-nat.sh clone <source_vm_name> <target_vm_name>
+[example]
+    ./vm-nat.sh clone node1 node2
 EOF
 			exit 1
 		fi
@@ -515,10 +526,10 @@ fn_set_ip(){
 
 	if [ $# -ne 2 ];then
 			cat <<EOF
-	usage:
-		./vm-nat.sh clone <source_vm_name> <target_vm_name>
-	example:
-		./vm-nat.sh clone node1 node2
+[usage]
+    ./vm-nat.sh clone <source_vm_name> <target_vm_name>
+[example]
+    ./vm-nat.sh clone node1 node2
 EOF
 			exit 1
 		fi
@@ -584,16 +595,18 @@ ACTION=$1
 case ${ACTION} in
 	images)
 		cat <<EOF
-#support image
-   ubuntu14.04
-   centos6
-   fedora22
-   fedora23
-   #ubuntu15.10
-   #centos7
-   #debian8.2
-#how to create a new vm
-  ./vm-nat.sh create ubuntu14.04 node1 2223
+[support images]
+
+    ubuntu14.04
+    centos6
+    fedora22
+    fedora23
+
+# how to get an image
+
+    make <image_name>
+    eg:make ubuntu14.04
+
 EOF
 		;;
 	list)
