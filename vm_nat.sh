@@ -1,5 +1,11 @@
 #!/bin/bash
 
+BR="virbr0"
+NETWORK_PREFIX="192.168.122"
+
+#BR="br0"
+#NETWORK_PREFIX="192.168.1"
+
 
 fn_show_usage() {
 	if [ $# -ne 2 ];then
@@ -8,7 +14,7 @@ usage:
 	./vm-nat.sh <action> <option>
 example: 
 	./vm-nat.sh images
-	./vm-nat.sh create ubuntu14.04 node1 192.168.122.128
+	./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
 	./vm-nat.sh list
 	./vm-nat.sh exec node1 "top -b"
 	./vm-nat.sh ssh node1
@@ -27,7 +33,7 @@ fn_create() {
 usage:
 	./vm-nat.sh create <image> <vm_name> <ip>
 example:
-	./vm-nat.sh create ubuntu14.04 node1 192.168.122.128
+	./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
 EOF
 		exit 1
 	fi
@@ -85,6 +91,9 @@ EOF
 	echo "##### change hostname #####"
 	sed -i "s/{HOSTNAME}/${VM_NAME}/" etc/user-data
 
+	echo "##### change network prefix #####"
+	sed -i "s/{NETWORK_PREFIX}/${NETWORK_PREFIX}/" etc/user-data	
+
 	echo "etc/user-data"
 	echo "-----------------------------------"
 	cat etc/user-data
@@ -139,6 +148,7 @@ EOF
 	
 	echo -e "\n##### start the VM #####"
 	# way1
+	sudo pwd
 	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=${BR} -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
 
 	#sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -drive file=${IMG},if=virtio -boot c -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22&
@@ -552,7 +562,6 @@ EOF
 
 ## main ###################################################
 
-BR="virbr0"
 
 ACTION=$1
 case ${ACTION} in

@@ -22,10 +22,10 @@ bootcmd:
     - echo "iface eth0 inet static" >> /etc/network/interfaces.d/eth0.cfg
     - echo "address {STATIC_IP}"    >> /etc/network/interfaces.d/eth0.cfg
     - echo "netmask 255.255.255.0"  >> /etc/network/interfaces.d/eth0.cfg
-    - echo "network 192.168.122.0"  >> /etc/network/interfaces.d/eth0.cfg
-    - echo "gateway 192.168.122.1"  >> /etc/network/interfaces.d/eth0.cfg
-    - echo "broadcast 192.168.122.255"     >> /etc/network/interfaces.d/eth0.cfg
-    - echo "dns-nameservers 192.168.122.1" >> /etc/network/interfaces.d/eth0.cfg
+    - echo "network {NETWORK_PREFIX}.0"  >> /etc/network/interfaces.d/eth0.cfg
+    - echo "gateway {NETWORK_PREFIX}.1"  >> /etc/network/interfaces.d/eth0.cfg
+    - echo "broadcast {NETWORK_PREFIX}.255"     >> /etc/network/interfaces.d/eth0.cfg
+    - echo "dns-nameservers {NETWORK_PREFIX}.1" >> /etc/network/interfaces.d/eth0.cfg
     - echo "===== bootcmd  ====="
 
 runcmd:
@@ -37,6 +37,6 @@ runcmd:
     - ifconfig
     - ip route
     - echo "===== runcmd ====="
-    - ip addr flush dev eth0 && sleep 1 && ifconfig eth0 {STATIC_IP}/24 up && route add default gw 192.168.122.1
+    - ip addr flush dev eth0 && sleep 1 && ifconfig eth0 {STATIC_IP}/24 up && route add default gw {NETWORK_PREFIX}.1
 
 final_message: "VM started..."

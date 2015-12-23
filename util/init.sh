@@ -7,6 +7,9 @@ fi
 
 echo "== init =================="
 
+HOST_IP="192.168.122.1"
+#HOST_IP="192.168.1.141"
+
 cat /etc/issue | grep -i -E "(centos|fedora)"
 if [ $? -eq 0 ];then
 	echo "init for centos|fedora"
@@ -21,9 +24,9 @@ if [ $? -eq 0 ];then
 	echo "> config docker"
 	grep http_proxy /etc/sysconfig/docker
 	if [ $? -eq 0 ];then
-		sed -r -i "s@.*http_proxy=.*@http_proxy='http://192.168.122.1:8118/'@" /etc/sysconfig/docker
+		sed -r -i "s@.*http_proxy=.*@http_proxy='http://${HOST_IP}:8118/'@" /etc/sysconfig/docker
 	else
-		echo "http_proxy='http://192.168.122.1:8118/" >> /etc/sysconfig/docker	
+		echo "http_proxy='http://${HOST_IP}:8118/" >> /etc/sysconfig/docker	
 	fi
 	sed -r -i "s@.*other_args=.*@other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" /etc/sysconfig/docker
 
@@ -55,7 +58,7 @@ else
 		wget -qO- https://get.docker.com/ | sh
 
 		echo "> config docker"
-		sed -r -i "s@.*export http_proxy=.*@export http_proxy='http://192.168.122.1:8118/'@" /etc/default/docker
+		sed -r -i "s@.*export http_proxy=.*@export http_proxy='http://${HOST_IP}:8118/'@" /etc/default/docker
 		sed -r -i "s@.*DOCKER_OPTS=.*@DOCKER_OPTS='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" /etc/default/docker
 
 		echo "> restart docker daemon"

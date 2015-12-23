@@ -6,6 +6,9 @@ if [ $? -ne 0 ];then
 	exit 1
 fi
 
+NETWORK_PREFIX="192.168.122"
+#NETWORK_PREFIX="192.168.1"
+
 if [ $# -eq 1 ];then
 
 	cat <<EOF > /etc/network/interfaces.d/eth0.cfg 
@@ -14,10 +17,10 @@ if [ $# -eq 1 ];then
 
 	address `echo $1`
 	netmask 255.255.255.0
-	network 192.168.122.0
-	broadcast 192.168.122.255
-	gateway 192.168.122.1
-	dns-nameservers 192.168.122.1
+	network `echo ${NETWORK_PREFIX}`.0
+	broadcast `echo ${NETWORK_PREFIX}`.255
+	gateway `echo ${NETWORK_PREFIX}`.1
+	dns-nameservers `echo ${NETWORK_PREFIX}`.1
 EOF
 
 	echo "/etc/network/interfaces.d/eth0.cfg updated"
@@ -26,5 +29,5 @@ EOF
 	echo "---------------------------------------------"
 	echo "please reboot this vm"
 else
-	echo "usage: ./set_ip.sh 192.168.122.128"
+	echo "usage: ./set_ip.sh ${NETWORK_PREFIX}.128"
 fi
