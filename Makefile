@@ -111,6 +111,8 @@ clean:
 	@rm -rf _base_image/* _deps/* _image/* _tmp/*
 
 help:
+	@echo "# init dir and install cloud-localds"
+	@echo "  make"
 	@echo "# download image"
 	@echo "  make ubuntu15.10"
 	@echo "  make ubuntu14.04"
@@ -119,6 +121,3 @@ help:
 	@echo "  make centos6"
 	@echo "  make fedora23"
 	@echo "  make fedora22"
-	@echo "# generate _image/seed.img"
-	@echo "  make seed.img"
-

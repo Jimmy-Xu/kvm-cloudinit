@@ -10,10 +10,13 @@ echo "== init =================="
 echo "read from config"
 HOST_IP=$(grep HOST_IP config | cut -d"=" -f2)
 
-cat /etc/issue | grep -i -E "(centos|fedora)"
+cat /etc/issue | grep -i -E "(centos|fedora)" || cat /etc/os-release | grep -i -E "(centos|fedora)"
 if [ $? -eq 0 ];then
 	echo "init for centos|fedora"
 	
+	DOCKER_CFG=/etc/sysconfig/docker
+	DOCKER_SVR=/lib/systemd/system/docker.service
+
 	echo "> change yum repo"
 	yum install -y wget 
 	wget http://mirrors.163.com/.help/CentOS6-Base-163.repo -O /etc/yum.repos.d/CentOS6-Base-163.repo
@@ -21,14 +24,40 @@ if [ $? -eq 0 ];then
 	echo "> install docker"
 	wget -qO- https://get.docker.com/ | sh
 
-	echo "> config docker"
-	grep http_proxy /etc/sysconfig/docker
+	echo "> config docker: ${DOCKER_CFG}"
+	grep http_proxy ${DOCKER_CFG}
 	if [ $? -eq 0 ];then
-		sed -r -i "s@.*http_proxy=.*@http_proxy='http://${HOST_IP}:8118/'@" /etc/sysconfig/docker
+		sed -r -i "s@.*http_proxy=.*@http_proxy='http://${HOST_IP}:8118/'@" ${DOCKER_CFG}
 	else
-		echo "http_proxy='http://${HOST_IP}:8118/'" >> /etc/sysconfig/docker	
+		echo "http_proxy='http://${HOST_IP}:8118/'" >> ${DOCKER_CFG}
 	fi
-	sed -r -i "s@.*other_args=.*@other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" /etc/sysconfig/docker
+	grep other_args ${DOCKER_CFG}
+	if [ $? -eq 0 ];then
+		sed -r -i "s@.*other_args=.*@other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" ${DOCKER_CFG}
+	else
+		echo "other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors" >> ${DOCKER_CFG}
+	fi
+
+	if [ -f ${DOCKER_SVR} ];then
+		#for centos7
+		echo "config docker service for systemd: ${DOCKER_SVR}"
+
+		grep EnvironmentFile ${DOCKER_SVR}
+		if [ $? -eq 0 ];then
+			sed -r -i "s@EnvironmentFile=.*@EnvironmentFile=-${DOCKER_CFG}@" ${DOCKER_SVR}
+		else
+			sed -i "/\[Service\]/ a EnvironmentFile=-${DOCKER_CFG}" ${DOCKER_SVR}
+		fi
+
+		sed -r -i "s@ExecStart=.*@ExecStart=/usr/bin/docker daemon \$DOCKER_OPTS -H fd://@" ${DOCKER_SVR}
+
+		echo "-- ${DOCKER_CFG} -----------"
+		cat ${DOCKER_CFG}
+		echo "----------------------------"
+
+		echo "daemon-reload for systemd..."
+		systemctl daemon-reload
+	fi
 
 	echo "> restart docker daemon"
 	service docker restart
@@ -49,16 +78,21 @@ else
 		echo "> install docker"
 		wget -qO- https://get.docker.com/ | sh
 
-		echo "> config docker"
-		sed -r -i "s@.*export http_proxy=.*@export http_proxy='http://${HOST_IP}:8118/'@" /etc/default/docker
-		sed -r -i "s@.*DOCKER_OPTS=.*@DOCKER_OPTS='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" /etc/default/docker
+		DOCKER_CFG=/etc/default/docker
+		echo "> config docker: ${DOCKER_CFG}"
+		sed -r -i "s@.*export http_proxy=.*@export http_proxy='http://${HOST_IP}:8118/'@" ${DOCKER_CFG}
+		sed -r -i "s@.*DOCKER_OPTS=.*@DOCKER_OPTS='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" ${DOCKER_CFG}
 
 		echo "> restart docker daemon"
 		service docker restart
 
 	else
 		echo "unknown os distro"
+		echo "----------------------"
 		cat /etc/issue
+		echo "----------------------"
+		cat /etc/os-release
+		echo "----------------------"
 		exit 1
 	fi
 fi

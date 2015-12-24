@@ -131,7 +131,7 @@ EOF
 	else
 		echo "static ip..."
 		case "$1" in
-			centos6|fedora22|fedora23)
+			centos6|centos7|fedora22|fedora23)
 				echo "init for centos|fedora"
 				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/user-data.static.centos > etc/user-data
 				;;
@@ -256,7 +256,7 @@ EOF
 	# run the script
 	ssh ${SSH_OPT} root@${GUEST_IP} "./init.sh"
 	case "$1" in
-		centos6|fedora22|fedora23)
+		centos6|centos7|fedora22|fedora23)
 			ssh ${SSH_OPT} root@${GUEST_IP} "sed -r -i \"s@HOSTNAME=.*@HOSTNAME=${VM_NAME}@\" /etc/sysconfig/network"
 			ssh ${SSH_OPT} root@${GUEST_IP} "service iptables stop"
 			;;
@@ -620,6 +620,7 @@ case ${ACTION} in
 [support images]
 
     ubuntu14.04
+    centos7
     centos6
     fedora22
     fedora23

@@ -26,7 +26,7 @@ EOF
 		echo "---------------------------------------------"
 
 	else
-		cat /etc/issue | grep -i -E "(centos|fedora)"
+		cat /etc/issue | grep -i -E "(centos|fedora)" || cat /etc/os-release | grep -i -E "(centos|fedora)"
 		if [ $? -eq 0 ];then
 			echo "set static ip for centos|fedora"
 			cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-eth0
