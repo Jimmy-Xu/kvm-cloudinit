@@ -16,6 +16,7 @@ users:
 bootcmd:
     - echo "===== bootcmd ====="
     - echo "127.0.0.1 {HOSTNAME}" >> /etc/hosts
+    - hostname {HOSTNAME}
     - echo "bootcmd:$(date +'%F %T')" > /tmp/run.log
     - echo "===== init eth0(static ip)  ====="
     - service network stop

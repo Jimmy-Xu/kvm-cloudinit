@@ -263,6 +263,57 @@
 #6 Manager Swarm Cluster
 
 	
-#7 Add / Remove node in Swarm Cluster
+#7 Add node in Swarm Cluster
 
-	
+###7.1 add vm for node3
+
+	# create a new vm with centos6(use dhcp)
+	./vm_nat.sh create centos6 node3
+
+	# check node3
+	./vm_nat.sh list
+	----------------------------------
+	vmName	PID	mac_addr		guest_ip	backing_image
+	node1	26206	52:54:00:96:9a:05	192.168.1.129	ubuntu14.04.img
+	node2	30361	52:54:00:51:79:38	192.168.1.130	ubuntu14.04.img
+	node3	18540	52:54:00:cc:38:99	192.168.1.133	centos6.img 	<= dhcp
+	swarm	25552	52:54:00:12:61:35	192.168.1.128	ubuntu14.04.img
+
+
+	# change node3 to static ip
+	./vm_nat.sh ssh node3
+	[root@node3 ~]# ./set_ip.sh 192.168.1.131
+	[root@node3 ~]# exit
+
+	# restart node3
+	./vm_nat.sh stop node3
+	./vm_nat.sh start node3
+
+	# check node3
+	./vm_nat.sh list
+	----------------------------------
+	vmName	PID	mac_addr		guest_ip	backing_image
+	node1	26206	52:54:00:96:9a:05	192.168.1.129	ubuntu14.04.img
+	node2	30361	52:54:00:51:79:38	192.168.1.130	ubuntu14.04.img
+	node3	21124	52:54:00:7f:1d:7d	192.168.1.131	centos6.img 	<= static ip
+	swarm	25552	52:54:00:12:61:35	192.168.1.128	ubuntu14.04.img
+
+	# check docker daemon on node3
+	$ docker -H 192.168.1.131:2375 images
+	Error response from daemon: client is newer than server (client API version: 1.21, server API version: 1.19)
+
+	# check docker daemon info
+	$./vm_nat.sh exec node3 "docker version | grep Server"
+	----------------------------------
+	> ssh -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no  root@192.168.1.131 "bash -c 'docker version | grep Server'"
+	----------------------------------------------------------------------------------------------------------------------------
+	Server version: 1.7.1
+	Server API version: 1.19
+	----------------------------------------------------------------------------------------------------------------------------
+
+	# check docker client info
+	$ docker version | grep Client -A 2
+	Client:
+	 Version:      1.9.1
+	 API version:  1.21
+

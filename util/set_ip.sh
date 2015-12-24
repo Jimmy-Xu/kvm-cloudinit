@@ -41,6 +41,10 @@ NETMASK=255.255.255.0
 NM_CONTROLLED=no
 #UUID=3f92192e-7765-4488-9746-41d7cc477dd0
 EOF
+		echo "/etc/sysconfig/network-scripts/ifcfg-eth0 updated"
+		echo "---------------------------------------------"
+		cat /etc/sysconfig/network-scripts/ifcfg-eth0 
+		echo "---------------------------------------------"
 		else
 			echo "only support ubuntu14.04, centos6, fedora22, fedora23"
 			exit 1

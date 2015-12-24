@@ -211,13 +211,16 @@ EOF
 	sleep 15
 	echo "start waiting guest ip..."
 	cnt=0
-	WAIT_IP_TIMEOUT=60
+	WAIT_IP_TIMEOUT=120
 	if [ -z ${STATIC_IP} ];then
 		while [[ "${GUEST_IP}" == "" ]]
 		do
 			if [ $cnt -gt ${WAIT_IP_TIMEOUT} ];then
 				echo "Get guest ip timeout, quit!"
 				exit 1
+			fi
+			if [ ! -z ${STATIC_IP} ];then
+				ping -c 2 ${STATIC_IP}
 			fi
 			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
@@ -252,6 +255,12 @@ EOF
 
 	# run the script
 	ssh ${SSH_OPT} root@${GUEST_IP} "./init.sh"
+	case "$1" in
+		centos6|fedora22|fedora23)
+			ssh ${SSH_OPT} root@${GUEST_IP} "sed -r -i \"s@HOSTNAME=.*@HOSTNAME=${VM_NAME}@\" /etc/sysconfig/network"
+			ssh ${SSH_OPT} root@${GUEST_IP} "service iptables stop"
+			;;
+	esac
 
 	# TODO run the benchmark
 
