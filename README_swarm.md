@@ -8,9 +8,12 @@
 		- install docker (each vm)
 		- pull swarm image (each vm)
 	- Three docker container
-		- swarm: cluster manager
-		- node1: docker host
-		- node2: docker host
+		- swarm: cluster manager (ubuntu14.04, docker 1.9.1)
+		- node1: docker host     (ubuntu14.04, docker 1.9.1)
+		- node2: docker host     (ubuntu14.04, docker 1.9.1)
+		- node3: docker host     (centos7, docker 1.9.1)
+
+>docker daemon and docker client should be the same version
 
 
 #1 Prepare VM
@@ -22,9 +25,9 @@
 	HOST_IP=192.168.1.141 # <= host ip address
 
 	# create three VMs
-	./vm_nat.sh create ubuntu14.04 swarm 192.168.1.128
-	./vm_nat.sh create ubuntu14.04 node1 192.168.1.129
-	./vm_nat.sh create ubuntu14.04 node2 192.168.1.130
+	$ ./vm_nat.sh create ubuntu14.04 swarm 192.168.1.128
+	$ ./vm_nat.sh create ubuntu14.04 node1 192.168.1.129
+	$ ./vm_nat.sh create ubuntu14.04 node2 192.168.1.130
 
 
 	# show vm info
@@ -64,7 +67,7 @@
 ###2.2 [node1]: join to cluster (on each of your nodes, start the swarm agent)
 	
 	# ssh to node1
-	./vm_nat.sh ssh node1
+	$ ./vm_nat.sh ssh node1
 
 	# run on node1: (on each of your nodes, start the swarm agent)
 	root@node1:~# docker run -d --restart=always swarm join --addr=192.168.1.129:2375 token://08794256f34728021d1947832ae8bd88
@@ -78,7 +81,7 @@
 ###2.3 [node2]: join to cluster (on each of your nodes, start the swarm agent)
 
 	# ssh to node2
-	./vm_nat.sh ssh node2
+	$ ./vm_nat.sh ssh node2
 	
 	# run on node2: (on each of your nodes, start the swarm agent)
 	root@node2:~# docker run -d --restart=always swarm join --addr=192.168.1.130:2375 token://08794256f34728021d1947832ae8bd88
@@ -249,9 +252,9 @@
 	start container on node1, node2 -> start container on swarm
 
 	# [host]start container on each vm
-	./vm_nat.sh exec node1 "docker start 8ae"
-	./vm_nat.sh exec node2 "docker start 379"
-	./vm_nat.sh exec swarm "docker start e3b"
+	$ ./vm_nat.sh exec node1 "docker start 8ae"
+	$ ./vm_nat.sh exec node2 "docker start 379"
+	$ ./vm_nat.sh exec swarm "docker start e3b"
 
 	# [docker client]set DOCKER_HOST
 	$ export DOCKER_HOST=192.168.1.128:23750
@@ -267,53 +270,78 @@
 
 ###7.1 add vm for node3
 
-	# create a new vm with centos6(use dhcp)
-	./vm_nat.sh create centos6 node3
+	# create a new vm with centos7(use dhcp)
+	$ ./vm_nat.sh create centos7 node3 192.168.1.131
 
 	# check node3
-	./vm_nat.sh list
+	$ ./vm_nat.sh list
 	----------------------------------
 	vmName	PID	mac_addr		guest_ip	backing_image
 	node1	26206	52:54:00:96:9a:05	192.168.1.129	ubuntu14.04.img
 	node2	30361	52:54:00:51:79:38	192.168.1.130	ubuntu14.04.img
-	node3	18540	52:54:00:cc:38:99	192.168.1.133	centos6.img 	<= dhcp
-	swarm	25552	52:54:00:12:61:35	192.168.1.128	ubuntu14.04.img
-
-
-	# change node3 to static ip
-	./vm_nat.sh ssh node3
-	[root@node3 ~]# ./set_ip.sh 192.168.1.131
-	[root@node3 ~]# exit
-
-	# restart node3
-	./vm_nat.sh stop node3
-	./vm_nat.sh start node3
-
-	# check node3
-	./vm_nat.sh list
-	----------------------------------
-	vmName	PID	mac_addr		guest_ip	backing_image
-	node1	26206	52:54:00:96:9a:05	192.168.1.129	ubuntu14.04.img
-	node2	30361	52:54:00:51:79:38	192.168.1.130	ubuntu14.04.img
-	node3	21124	52:54:00:7f:1d:7d	192.168.1.131	centos6.img 	<= static ip
+	node3	30542	52:54:00:30:be:b3	192.168.1.131	centos7.img
 	swarm	25552	52:54:00:12:61:35	192.168.1.128	ubuntu14.04.img
 
 	# check docker daemon on node3
 	$ docker -H 192.168.1.131:2375 images
-	Error response from daemon: client is newer than server (client API version: 1.21, server API version: 1.19)
+	REPOSITORY    TAG      IMAGE ID       CREATED       VIRTUAL SIZE
+	swarm         latest   a9975e2cc0a3   2 weeks ago   17.15 MB
+	busybox       latest   ac6a7980c6c2   2 weeks ago   1.113 MB
 
-	# check docker daemon info
-	$./vm_nat.sh exec node3 "docker version | grep Server"
-	----------------------------------
-	> ssh -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no  root@192.168.1.131 "bash -c 'docker version | grep Server'"
-	----------------------------------------------------------------------------------------------------------------------------
-	Server version: 1.7.1
-	Server API version: 1.19
-	----------------------------------------------------------------------------------------------------------------------------
 
-	# check docker client info
-	$ docker version | grep Client -A 2
-	Client:
-	 Version:      1.9.1
-	 API version:  1.21
+###7.2 add node3 to Swarm Cluster
 
+	# ssh to node3
+	$ ./vm_nat.sh ssh node3
+
+	# run on node3: (on each of your nodes, start the swarm agent)
+	[root@node3 ~]# docker run -d --restart=always swarm join --addr=192.168.1.131:2375 token://08794256f34728021d1947832ae8bd88
+	e76ba620c481ea5b4be5e1a7277f755968c9c237fc575114fcdb4a90a3ad7a5c
+
+	[root@node3 ~]# docker ps
+	CONTAINER ID   IMAGE   COMMAND                  CREATED         STATUS         PORTS      NAMES
+	e76ba620c481   swarm   "/swarm join --addr=1"   13 seconds ago  Up 10 seconds  2375/tcp   silly_davinci
+
+	# docker client connect to node3
+	$ docker -H 192.168.1.131:2375 images
+	REPOSITORY   TAG      IMAGE ID       CREATED       VIRTUAL SIZE
+	swarm        latest   a9975e2cc0a3   2 weeks ago   17.15 MB
+	busybox      latest   ac6a7980c6c2   2 weeks ago   1.113 MB
+
+	# check docker swarm cluster info (Swarm manager will auto discovery node3)
+	$ export DOCKER_HOST=192.168.1.128:23750
+	$ docker info
+	Containers: 3
+	Images: 14
+	Role: primary
+	Strategy: spread
+	Filters: health, port, dependency, affinity, constraint
+	Nodes: 3
+	 node1: 192.168.1.129:2375
+	  └ Status: Healthy
+	  └ Containers: 1
+	  └ Reserved CPUs: 0 / 1
+	  └ Reserved Memory: 0 B / 1.019 GiB
+	  └ Labels: executiondriver=native-0.2, kernelversion=3.13.0-73-generic, operatingsystem=Ubuntu 14.04.3 LTS, storagedriver=aufs
+	 node2: 192.168.1.130:2375
+	  └ Status: Healthy
+	  └ Containers: 1
+	  └ Reserved CPUs: 0 / 1
+	  └ Reserved Memory: 0 B / 1.019 GiB
+	  └ Labels: executiondriver=native-0.2, kernelversion=3.13.0-73-generic, operatingsystem=Ubuntu 14.04.3 LTS, storagedriver=aufs
+	 node3: 192.168.1.131:2375
+	  └ Status: Healthy
+	  └ Containers: 1
+	  └ Reserved CPUs: 0 / 1
+	  └ Reserved Memory: 0 B / 1.018 GiB
+	  └ Labels: executiondriver=native-0.2, kernelversion=3.10.0-229.14.1.el7.x86_64, operatingsystem=CentOS Linux 7 (Core), storagedriver=devicemapper
+	CPUs: 3
+	Total Memory: 3.057 GiB
+	Name: 0fd0e7cac460
+
+	# pull image for swarm cluster
+	$ docker pull nginx
+	Using default tag: latest
+	node2: Pulling nginx:latest... : downloaded
+	node1: Pulling nginx:latest... : downloaded
+	node3: Pulling nginx:latest... : downloaded

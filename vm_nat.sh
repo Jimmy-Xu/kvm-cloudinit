@@ -1,5 +1,7 @@
 #!/bin/bash
 
+sudo pwd
+
 echo "read from etc/config"
 echo "----------------------------------"
 BR=$(grep BR etc/config | cut -d"=" -f2)
@@ -179,7 +181,6 @@ EOF
 
 	echo -e "\n##### start the VM #####"
 	# way1
-	sudo pwd
 	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=${BR} -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
 
 	#sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -drive file=${IMG},if=virtio -boot c -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22&
