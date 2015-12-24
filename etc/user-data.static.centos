@@ -30,6 +30,8 @@ bootcmd:
     - echo 'NETWORK="{NETWORK_PREFIX}.0"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
     - echo 'NETMASK="255.255.255.0"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
     - echo 'NM_CONTROLLED="no"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'DNS1=114.114.115.115' >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    - echo 'DNS2=114.114.114.114' >> /etc/sysconfig/network-scripts/ifcfg-eth0
     #- echo 'UUID="3f92192e-7765-4488-9746-41d7cc477dd0"' >> /etc/sysconfig/network-scripts/ifcfg-eth0
     - service network start
     - echo "===== bootcmd  ====="

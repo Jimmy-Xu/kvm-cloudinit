@@ -10,6 +10,18 @@ echo "== init =================="
 echo "read from config"
 HOST_IP=$(grep HOST_IP config | cut -d"=" -f2)
 
+ping -c 2 114.114.115.115
+cnt=0
+while [ $? -ne 0 ]
+do
+	if [ $cnt -gt 10 ];then
+		echo "dns error!"
+		exit 1
+	fi
+	ping -c 2 114.114.115.115
+	cnt=$((cnt + 1))
+done
+
 cat /etc/issue | grep -i -E "(centos|fedora)" || cat /etc/os-release | grep -i -E "(centos|fedora)"
 if [ $? -eq 0 ];then
 	echo "init for centos|fedora"
@@ -18,9 +30,15 @@ if [ $? -eq 0 ];then
 	DOCKER_SVR=/lib/systemd/system/docker.service
 
 	echo "> change yum repo"
-	yum install -y wget 
+	yum install -y wget
+	if [ $? -ne 0 ];then
+		curl http://mirrors.163.com/.help/CentOS7-Base-163.repo > /etc/yum.repos.d/CentOS7-Base-163.repo
+		curl http://mirrors.163.com/.help/CentOS6-Base-163.repo > /etc/yum.repos.d/CentOS6-Base-163.repo
+		yum install -y wget
+	fi
 	wget http://mirrors.163.com/.help/CentOS6-Base-163.repo -O /etc/yum.repos.d/CentOS6-Base-163.repo
-	
+	wget http://mirrors.163.com/.help/CentOS7-Base-163.repo -O /etc/yum.repos.d/CentOS7-Base-163.repo
+
 	echo "> install docker"
 	wget -qO- https://get.docker.com/ | sh
 
@@ -49,7 +67,7 @@ if [ $? -eq 0 ];then
 			sed -i "/\[Service\]/ a EnvironmentFile=-${DOCKER_CFG}" ${DOCKER_SVR}
 		fi
 
-		sed -r -i "s@ExecStart=.*@ExecStart=/usr/bin/docker daemon \$DOCKER_OPTS -H fd://@" ${DOCKER_SVR}
+		sed -r -i "s@ExecStart=.*@ExecStart=/usr/bin/docker daemon \$other_args -H fd://@" ${DOCKER_SVR}
 
 		echo "-- ${DOCKER_CFG} -----------"
 		cat ${DOCKER_CFG}

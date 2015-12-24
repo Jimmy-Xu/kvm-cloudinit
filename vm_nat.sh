@@ -211,7 +211,7 @@ EOF
 	sleep 15
 	echo "start waiting guest ip..."
 	cnt=0
-	WAIT_IP_TIMEOUT=120
+	WAIT_IP_TIMEOUT=150
 	if [ -z ${STATIC_IP} ];then
 		while [[ "${GUEST_IP}" == "" ]]
 		do
@@ -219,12 +219,9 @@ EOF
 				echo "Get guest ip timeout, quit!"
 				exit 1
 			fi
-			if [ ! -z ${STATIC_IP} ];then
-				ping -c 2 ${STATIC_IP}
-			fi
 			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
-			echo "$cnt:waiting guest ip of mac(${MAC_ADDR})"
+			echo "$cnt:waiting guest dhcp ip of mac(${MAC_ADDR})"
 			cnt=$((cnt + 1))
 			sleep 1
 		done
@@ -235,9 +232,12 @@ EOF
 				echo "Get guest ip timeout, quit!"
 				exit 1
 			fi
+			if [ "${STATIC_IP}" != "" ];then
+				ping -c 2 ${STATIC_IP}
+			fi
 			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "_tmp/nat/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp -n  | grep "${STATIC_IP}.*${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
-			echo "$cnt:waiting guest ip(${STATIC_IP}) of mac(${MAC_ADDR})"
+			echo "$cnt:waiting guest static ip(${STATIC_IP}) of mac(${MAC_ADDR})"
 			cnt=$((cnt + 1))
 			sleep 1
 		done
