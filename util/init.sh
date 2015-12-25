@@ -75,6 +75,8 @@ if [ $? -eq 0 ];then
 
 		echo "daemon-reload for systemd..."
 		systemctl daemon-reload
+		echo "enable docker autostart..."
+		systemctl enable docker
 	fi
 
 	echo "> restart docker daemon"

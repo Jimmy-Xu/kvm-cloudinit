@@ -345,3 +345,55 @@
 	node2: Pulling nginx:latest... : downloaded
 	node1: Pulling nginx:latest... : downloaded
 	node3: Pulling nginx:latest... : downloaded
+
+
+#8 run container in Swarm Cluster
+
+	$ export DOCKER_HOST=192.168.1.128:23750
+
+
+###8.1 Run 4 nginx with 8888 port in 3 nodes, the last nginx can not start
+
+	$ docker run --name nginx1 -p 8888:80 -d nginx
+	db70b089a24abd4e80fddfe89e5d1241abcc985fecff086f923801d1c72df32e
+	
+	$ docker run --name nginx2 -p 8888:80 -d nginx
+	267a840c9570796b3d1598f664650264a69089fd026d2f2a9223ac2ab5d80e10
+	
+	$ docker run --name nginx3 -p 8888:80 -d nginx
+	501a9713c69a214cff01da1484d06d6b86539d167eb94766fcedd0810bf65c1f
+	
+	$ docker run --name nginx4 -p 8888:80 -d nginx
+	Error response from daemon: unable to find a node with port 8888 available
+
+	$ docker ps
+	CONTAINER ID   IMAGE   COMMAND                  CREATED         STATUS         PORTS                                NAMES
+	267a840c9570   nginx   "nginx -g 'daemon off"   3 minutes ago   Up 3 minutes   443/tcp, 192.168.1.129:8888->80/tcp  node1/nginx2
+	501a9713c69a   nginx   "nginx -g 'daemon off"   3 minutes ago   Up 3 minutes   443/tcp, 192.168.1.131:8888->80/tcp  node3/nginx3
+	db70b089a24a   nginx   "nginx -g 'daemon off"   3 minutes ago   Up 3 minutes   443/tcp, 192.168.1.130:8888->80/tcp  node2/nginx1 <=
+
+	$ curl http://192.168.1.129:8888
+	$ curl http://192.168.1.130:8888
+	$ curl http://192.168.1.131:8888
+
+
+###8.2 Run 3 nginx with 8888 port in 3 nodes, stop all nginx, run 1 tomcat
+	
+	$ docker stop nginx1 nginx2 nginx3
+
+	$ docker run --name tomcat1 -p 8888:80 -d tomcat
+	Error response from daemon: unable to find a node with port 8888 available
+
+	$ docker rm -f nginx1
+	nginx1
+
+	$ docker run --name tomcat1 -p 8888:8080 -d tomcat
+	72d09e18169d5959fa61b00e1681cf514c985383cbc4f32a5efd392721c412a0
+
+	$ docker ps
+	CONTAINER ID   IMAGE    COMMAND                  CREATED         STATUS         PORTS                                 NAMES
+	72d09e18169d   tomcat   "catalina.sh run"        42 seconds ago  Up 47 seconds  192.168.1.130:8888->8080/tcp          node2/tomcat1 <=
+	267a840c9570   nginx    "nginx -g 'daemon off"   9 minutes ago   Up 2 seconds   443/tcp, 192.168.1.129:8888->80/tcp   node1/nginx2
+	501a9713c69a   nginx    "nginx -g 'daemon off"   9 minutes ago   Up 6 seconds   443/tcp, 192.168.1.131:8888->80/tcp   node3/nginx3
+
+	$ curl http://192.168.1.130:8888
