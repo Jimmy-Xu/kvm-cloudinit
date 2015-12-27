@@ -1,4 +1,4 @@
-all: init cloud-localds
+all: init kvm cloud-localds
 
 # init
 init:
@@ -75,6 +75,14 @@ fedora22:
 # 		echo "_base_image/coreos.img already downloaded";\
 # 	fi
 ######################################################################
+
+# install kvm libvirt
+kvm:
+	@echo
+	@echo "----- install kvm and libvirt -----"
+	@sudo apt-get install qemu qemu-kvm libvirt-bin
+	@echo "----- check after installed -----"
+	@qemu-system-x86_64 --version && sudo ifconfig virbr0 && echo "qemu and libvirt installed succeed!" || echo "qemu or libvirt installed failed!"
 
 # install cloud-localds
 cloud-localds:
