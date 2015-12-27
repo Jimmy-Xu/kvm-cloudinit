@@ -105,7 +105,7 @@
 	root@swarm:~# docker -H 192.168.1.130:2375 images
 
 	# start the manager on any machine or your laptop
-	root@swarm:~# docker run --restart=always -t -p 23750:2375 -t swarm manage token://08794256f34728021d1947832ae8bd88
+	root@swarm:~# docker run --restart=always -p 23750:2375 -t swarm manage token://08794256f34728021d1947832ae8bd88
 	INFO[0000] Listening for HTTP                            addr=:2375 proto=tcp
 	INFO[0001] Registered Engine node1 at 192.168.1.129:2375 
 	INFO[0001] Registered Engine node2 at 192.168.1.130:2375 
