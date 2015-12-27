@@ -1,5 +1,6 @@
 #!/bin/bash
 
+SELF=$(basename $0)
 sudo pwd
 
 echo "read from etc/config"
@@ -15,26 +16,26 @@ fn_show_usage() {
 		cat <<EOF
 [usage]
   
-    ./vm-nat.sh <action> <options>
+    ${SELF} <action> <options>
 
 [example]
 
-    ./vm-nat.sh images
-    ./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
-    ./vm-nat.sh list
-    ./vm-nat.sh exec node1 "top -b"
-    ./vm-nat.sh ssh node1
-    ./vm-nat.sh stop node1
-    ./vm-nat.sh start node1
-    ./vm-nat.sh shutdown node1
+    ${SELF} images
+    ${SELF} create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
+    ${SELF} list
+    ${SELF} exec node1 "top -b"
+    ${SELF} ssh node1
+    ${SELF} stop node1
+    ${SELF} start node1
+    ${SELF} shutdown node1
 
 [usage]
 
 # how to create a new vm(dhcp)
-    ./vm-nat.sh create ubuntu14.04 node1
+    ${SELF} create ubuntu14.04 node1
 
 # how to create a new vm(static ip)
-    ./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
+    ${SELF} create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
 
 EOF
 	  exit 1
@@ -45,9 +46,9 @@ fn_create() {
 	if [ $# -lt 2 ];then
 		cat <<EOF
 [usage]
-    ./vm-nat.sh create <image> <vm_name> <ip>
+    ${SELF} create <image> <vm_name> <ip>
 [example]
-    ./vm-nat.sh create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
+    ${SELF} create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
 EOF
 		exit 1
 	fi
@@ -274,7 +275,7 @@ fn_list(){
 	if [ $# -ne 0 ];then
 		cat <<EOF
 [usage]
-    ./vm-nat.sh list
+    ${SELF} list
 EOF
 		exit 1
 	fi
@@ -314,9 +315,9 @@ fn_exec(){
 	if [[ $# -ne 2 ]] || [[ -z $2 ]] ;then
 		cat <<EOF
 [usage]
-    ./vm-nat.sh exec <vm_name> <command_line>
+    ${SELF} exec <vm_name> <command_line>
 [example]
-    ./vm-nat.sh exec node1 "top -b"
+    ${SELF} exec node1 "top -b"
 EOF
 		exit 1
 	fi
@@ -341,9 +342,9 @@ fn_shutdown(){
 	if [ $# -ne 1 ];then
 		cat <<EOF
 [usage]
-    ./vm-nat.sh shutdown <vm_name>
+    ${SELF} shutdown <vm_name>
 [example]
-    ./vm-nat.sh shutdown node1
+    ${SELF} shutdown node1
 EOF
 		exit 1
 	fi
@@ -383,9 +384,9 @@ fn_ssh(){
 if [ $# -ne 1 ];then
 		cat <<EOF
 [usage]
-    ./vm-nat.sh ssh <vm_name>
+    ${SELF} ssh <vm_name>
 [example]
-    ./vm-nat.sh ssh node1
+    ${SELF} ssh node1
 EOF
 		exit 1
 	fi
@@ -412,9 +413,9 @@ fn_stop(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
 [usage]
-    ./vm-nat.sh stop <vm_name>
+    ${SELF} stop <vm_name>
 [example]
-    ./vm-nat.sh stop node1
+    ${SELF} stop node1
 EOF
 			exit 1
 		fi
@@ -441,9 +442,9 @@ fn_start(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
 [usage]
-    ./vm-nat.sh start <vm_name>
+    ${SELF} start <vm_name>
 [example]
-    ./vm-nat.sh start node1
+    ${SELF} start node1
 EOF
 			exit 1
 		fi
@@ -483,9 +484,9 @@ fn_clone(){
 	if [ $# -ne 2 ];then
 			cat <<EOF
 [usage]
-    ./vm-nat.sh clone <source_vm_name> <target_vm_name>
+    ${SELF} clone <source_vm_name> <target_vm_name>
 [example]
-    ./vm-nat.sh clone node1 node2
+    ${SELF} clone node1 node2
 EOF
 			exit 1
 		fi
@@ -550,9 +551,9 @@ fn_set_ip(){
 	if [ $# -ne 2 ];then
 			cat <<EOF
 [usage]
-    ./vm-nat.sh clone <source_vm_name> <target_vm_name>
+    ${SELF} clone <source_vm_name> <target_vm_name>
 [example]
-    ./vm-nat.sh clone node1 node2
+    ${SELF} clone node1 node2
 EOF
 			exit 1
 		fi
