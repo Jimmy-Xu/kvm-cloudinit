@@ -1,7 +1,7 @@
-#FROM haproxytech/haproxy-ubuntu:latest
-#MAINTAINER Baptiste Assmann <bassmann@haproxy.com>
 FROM haproxy:1.6
 MAINTAINER Jimmy Xu <xjimmyshcn@gmail.com>
+
+ADD sources.list /etc/apt/sources.list
 
 # install third party tools
 RUN export DEBIAN_FRONTEND=noninteractive && \
