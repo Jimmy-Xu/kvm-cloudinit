@@ -1,0 +1,123 @@
+#cloud-config
+
+hostname: {HOSTNAME}
+users:
+  - default
+  - name: stack
+    homedir: /home/stack
+    lock_passwd: False
+    sudo: ["ALL=(ALL) NOPASSWD:ALL\nDefaults:stack !requiretty"]
+    shell: /bin/bash
+    #generate passwd: mkpasswd --method=SHA-512 --rounds=4096 (plain passwd: aaa123aa)
+    passwd: $6$rounds=4096$LiIq3Q3/c64erfZ4$bWHRJl.sjWTmUp01sCJBGM5tRMnx43ikjF3ckbvl75Fswbgdl1v1mgveD3fCP4W1q.rWbrt6BTiofcHnG3KFP/
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCp4xR1QBtsBW56Cws4T1ZeyqLEz749qzf06DxQxPblcuMA5+RaC7pTtvbfQAOD2Qyjn1yxRtA0gOwIQcmG7RS4wW817IBvIZCfZG8HIuRl53iUnmRHFHRF+F9xOSOf2NnWtLbRhJwCxxbYo6RfjdxglGfLtZQ3bgx+tAIaB7v6sZkvpxX469dmYxPu2jEbSBVSgPC6Ih7jfrkF4SUN67EyhntQt2EzMI1pZ1kX41ytxE9zjuKp/r3D8NiBu1zlbBsBf/+OJWnjZwL5vjx73nze6ntqus7STmkZMVUh9B+dDKNUtO2O2Q/Otm/aDw3PKiDU6a+rJQ89w6jnRIfcbpnr root@mini-ubuntu
+
+bootcmd:
+    - echo "===== bootcmd ====="
+    - echo "127.0.0.1 {HOSTNAME}" >> /etc/hosts
+    - hostname {HOSTNAME}
+    - ifconfig eth1 up
+    - ifconfig
+    - ip route
+    - echo "bootcmd:$(date +'%F %T')" > /tmp/run.log
+    - echo "===== bootcmd  ====="
+
+
+write_files:
+  - content: |
+        deb http://mirrors.163.com/ubuntu/ trusty main restricted universe multiverse
+        deb http://mirrors.163.com/ubuntu/ trusty-security main restricted universe multiverse
+        deb http://mirrors.163.com/ubuntu/ trusty-updates main restricted universe multiverse
+        deb http://mirrors.163.com/ubuntu/ trusty-proposed main restricted universe multiverse
+        deb http://mirrors.163.com/ubuntu/ trusty-backports main restricted universe multiverse
+        deb-src http://mirrors.163.com/ubuntu/ trusty main restricted universe multiverse
+        deb-src http://mirrors.163.com/ubuntu/ trusty-security main restricted universe multiverse
+        deb-src http://mirrors.163.com/ubuntu/ trusty-updates main restricted universe multiverse
+        deb-src http://mirrors.163.com/ubuntu/ trusty-proposed main restricted universe multiverse
+        deb-src http://mirrors.163.com/ubuntu/ trusty-backports main restricted universe multiverse
+    path: /etc/apt/sources.list.163
+    permissions: 0644
+  - content: |
+        Acquire::Languages "none";
+    path: /etc/apt/apt.conf.d/99translations
+    permissions: 0644
+  - content: |
+        nameserver 114.114.115.115
+        nameserver 114.114.114.114
+    path: /etc/resolvconf/resolv.conf.d/base
+    permissons: 0644
+  - content: |
+        {
+          "server"  : "?",
+          "server_port": 8388,
+          "local_port": 1080,
+          "password": "aaa123aa",
+          "timeout": 600,
+          "method": "aes-256-cfb"
+        }
+    path: /etc/shadowsocks/client.json.template
+    permissions: 0644
+  - content: |
+        forward-socks5 / 127.0.0.1:1080 .
+        listen-address  0.0.0.0:8118
+    path: /etc/privoxy/config.template
+    permissions: 0644
+  - content: |
+        ## some more ls aliases
+        alias grep='grep --color=auto'
+        alias ls='ls --color=auto'
+        alias ll='ls -alF'
+        alias la='ls -A'
+        alias l='ls -CF'
+        ## prompt
+        PMT=""; if [  $UID -eq 0 ];then PMT="#" ;else PMT="$" ; fi
+        WHITE="\[\033[0m\]" 
+        YELLOW="\[\033[0;33m\]"
+        GREEN="\[\033[0;32;40m\]"
+        RED="\[\033[0;31;40m\]"
+        BLUE="\[\033[1;34m\]"
+        export PS1="[$RED\u@\h $BLUE\W$WHITE:$YELLOW\$(git branch 2>/dev/null | grep '^*' | colrm 1 2)$WHITE]"$PMT 
+        ## proxy
+        export http_proxy=http://127.0.0.1:8118
+        export https_proxy=https://127.0.0.1:8118
+        export no_proxy=localhost,127.0.0.0/8,::1,/var/run/docker.sock,mirrors.163.com
+        ## PATH
+        export PATH=/usr/local/bin:${PATH}
+    path: /home/stack/.profile
+    permissons: 0755
+  - content: |
+        #!/bin/sh
+        DEBIAN_FRONTEND=noninteractive sudo apt-get -qqy update || sudo yum update -qy
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -qqy git || sudo yum install -qy git
+        ## install shadowsocks
+        sudo apt-get install -y python-pip || sudo yum install -y python-pip
+        sudo pip install shadowsocks
+        ## install privoxy
+        sudo apt-get install -y privoxy || sudo yum install -y privoxy
+        ## config
+        sudo cp /etc/shadowsocks/client.json.template /etc/shadowsocks/client.json
+        sudo cp /etc/privoxy/config.template /etc/privoxy/config
+        ## start shadowsocks and privoxy
+        sudo service privoxy restart
+        sudo /usr/local/bin/sslocal -c /etc/shadowsocks/client.json -d start --log-file /var/log/sslocal.log
+        ##build devstack
+        sudo chown stack:stack /home/stack
+        cd /home/stack
+        git clone https://git.openstack.org/openstack-dev/devstack
+        cd devstack
+        sed -i "s/git:/http:/" stackrc
+        echo '[[local|localrc]]' > local.conf
+        echo ADMIN_PASSWORD=aaa123aa >> local.conf
+        echo DATABASE_PASSWORD=aaa123aa >> local.conf
+        echo RABBIT_PASSWORD=aaa123aa >> local.conf
+        echo SERVICE_PASSWORD=aaa123aa >> local.conf
+        echo SERVICE_TOKEN=tokentoken >> local.conf
+        ./stack.sh
+    path: /home/stack/start.sh
+    permissions: 0755
+
+runcmd:
+  - sudo cp /etc/apt/sources.list.163 /etc/apt/sources.list
+  - sudo chown stack:stack /home/stack/* /home/stack/.* -R 
+  - su -l stack ./start.sh
