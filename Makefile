@@ -19,6 +19,12 @@ ubuntu14.04:
 	@echo
 	@echo "----- download image: ubuntu-14.04 -----"
 	@wget -c http://cloud-images.ubuntu.com/releases/14.04/release-20151217/ubuntu-14.04-server-cloudimg-amd64-disk1.img -O _base_image/ubuntu14.04.img
+	@echo "----- resize -----"
+	@if  (qemu-img info _base_image/ubuntu14.04.img | grep "virtual size.*2.2G") ;then \
+		echo "need resize";\
+		qemu-img resize _base_image/ubuntu14.04.img +2G;\
+	fi
+	@ qemu-img info _base_image/ubuntu14.04.img
 
 # download debian(qcow2)
 debian8.2:
