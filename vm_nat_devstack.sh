@@ -184,13 +184,13 @@ EOF
 
 	echo -e "\n##### start the VM #####"
 	# way1
-	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,vlan=0,macaddr=${MAC0} -net nic,model=virtio,vlan=1,macaddr=${MAC1} -net bridge,br=${BR},vlan=0 -net user,vlan=1 -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
+	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,vlan=0,macaddr=${MAC0} -net nic,model=virtio,vlan=1,macaddr=${MAC1} -net bridge,br=${BR},vlan=0 -net user,vlan=1 -hda ${IMG} -hdb $SEED_IMG -m 2G -nographic &
 
-	#sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -drive file=${IMG},if=virtio -boot c -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22&
+	#sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -drive file=${IMG},if=virtio -boot c -hdb $SEED_IMG -m 2G -nographic -redir :${SSH_PORT}::22&
 	
 
 	# way2
-	#qemu-system-x86_64 -enable-kvm -net nic,model=virtio,macaddr=00:16:3e:3a:c0:99 -net tap,ifname=vnet10,script=no,downscript=no -hda $IMG -hdb _image/seed.img -m 1G -nographic -redir :2222::22 &
+	#qemu-system-x86_64 -enable-kvm -net nic,model=virtio,macaddr=00:16:3e:3a:c0:99 -net tap,ifname=vnet10,script=no,downscript=no -hda $IMG -hdb _image/seed.img -m 2G -nographic -redir :2222::22 &
 
 	#way3
 	#sudo qemu-system-x86_64 \
@@ -205,7 +205,7 @@ EOF
 	# -no-reboot \
 	# -rtc base=utc,driftfix=slew \
 	# -smp 1 \
-	# -net nic -net user -hda $IMG -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22 &
+	# -net nic -net user -hda $IMG -hdb $SEED_IMG -m 2G -nographic -redir :${SSH_PORT}::22 &
 
 	# remove the overlay (qemu will keep it open as needed)
 	#sleep 10
@@ -479,7 +479,7 @@ EOF
 
 	MAC0=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
 	MAC1=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
-	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,vlan=0,macaddr=${MAC0} -net nic,model=virtio,vlan=1,macaddr=${MAC1} -net bridge,br=${BR},vlan=0 -net user,vlan=1 -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
+	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,vlan=0,macaddr=${MAC0} -net nic,model=virtio,vlan=1,macaddr=${MAC1} -net bridge,br=${BR},vlan=0 -net user,vlan=1 -hda ${IMG} -hdb $SEED_IMG -m 2G -nographic &
 
 }
 

@@ -113,6 +113,9 @@ write_files:
         echo RABBIT_PASSWORD=aaa123aa >> local.conf
         echo SERVICE_PASSWORD=aaa123aa >> local.conf
         echo SERVICE_TOKEN=tokentoken >> local.conf
+        #install lib
+        sudo pip install --upgrade python-openstackclient python-keystoneclient
+        sudo pip install pyopenssl ndg-httpsclient pyasn1
         ./stack.sh
     path: /home/stack/start.sh
     permissions: 0755
