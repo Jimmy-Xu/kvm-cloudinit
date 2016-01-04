@@ -1,10 +1,35 @@
 #!/bin/bash
 
+#!/bin/bash
+
 SELF=./$(basename $0)
 sudo pwd
-
 USERNAME="root"
-TMP_IMG="_tmp/swarm"
+
+FLAG="$1"
+ACTION="$2"
+
+#check flag
+case "${FLAG}" in
+	swarm|registry|devstack)
+		;;
+	*)
+		echo "flag should be swarm,registry,devstack"
+		cat <<EOF
+[usage]
+  
+    ./vm_nat.sh <flag> <action> <options>
+
+[flag]
+	swarm
+	registry
+	devstack
+EOF
+		exit 1
+		;;
+esac
+
+TMP_IMG="_tmp/${FLAG}"
 
 
 echo "read from etc/config"
@@ -16,32 +41,37 @@ echo "NETWORK_PREFIX: ${NETWORK_PREFIX}"
 echo "----------------------------------"
 
 fn_show_usage() {
-	if [ $# -ne 2 ];then
+	if [ $# -ne 3 ];then
 		cat <<EOF
 [usage]
   
-    ${SELF} <action> <options>
+    ${SELF} <flag> <action> <options>
+
+[flag]
+	swarm
+	registry
+	devstack
 
 [example]
 
-    ${SELF} images
-    ${SELF} create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
-    ${SELF} list
-    ${SELF} exec node1 "top -b"
-    ${SELF} ssh node1
-    ${SELF} scp node1 ./file1 ~/
-    ${SELF} stop node1
-    ${SELF} start node1
-    ${SELF} clone node1 node2
-    ${SELF} shutdown node1
+    ${SELF} ${FLAG} images
+    ${SELF} ${FLAG} create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
+    ${SELF} ${FLAG} list
+    ${SELF} ${FLAG} exec node1 "top -b"
+    ${SELF} ${FLAG} ssh node1
+    ${SELF} ${FLAG} scp node1 ./file1 ~/
+    ${SELF} ${FLAG} stop node1
+    ${SELF} ${FLAG} start node1
+    ${SELF} ${FLAG} clone node1 node2
+    ${SELF} ${FLAG} shutdown node1
 
 [usage]
 
 # how to create a new vm(dhcp)
-    ${SELF} create ubuntu14.04 node1
+    ${SELF} swarm create ubuntu14.04 node1
 
 # how to create a new vm(static ip)
-    ${SELF} create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
+    ${SELF} swarm create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
 
 EOF
 	  exit 1
@@ -52,9 +82,9 @@ fn_create() {
 	if [ $# -lt 2 ];then
 		cat <<EOF
 [usage]
-    ${SELF} create <image> <vm_name> <ip>
+    ${SELF} <flag> create <image> <vm_name> <ip>
 [example]
-    ${SELF} create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
+    ${SELF} ${FLAG} create ubuntu14.04 node1 ${NETWORK_PREFIX}.128
 EOF
 		exit 1
 	fi
@@ -73,7 +103,7 @@ EOF
 	fi
 
 	echo "##### check vmName: ${VM_NAME} #####"
-	ps -ef | grep qemu-system-x86_64 | grep -Ev "(sudo|grep)" | grep "\-name ${VM_NAME}"
+	ps -ef | grep qemu-system-x86_64 | grep -Ev "(sudo|grep)" | grep "\-name ${VM_NAME}" | grep "_tmp/${FLAG}/"
 	if [ $? -eq 0 ];then
 		echo -e "\n[error]vmName ${VM_NAME} is in-used, please change the vm_name"
 		exit 1
@@ -86,7 +116,7 @@ EOF
 	fi	
 
 	echo "##### check ip #####"
-	arp | grep ${STATIC_IP} | grep -v "incomplete"
+	arp -n | grep ${STATIC_IP} | grep -v "incomplete"
 	if [ $? -eq 0 ];then
 		echo "[error] ip($STATIC_IP) is using"
 		exit 1
@@ -137,17 +167,17 @@ EOF
 	echo "##### convert user data into an ISO image #####"
 	if [ -z ${STATIC_IP} ];then
 		echo "dhcp..."
-		cat etc/swarm/user-data.dhcp > etc/user-data
+		cat etc/${FLAG}/user-data.dhcp > etc/user-data
 	else
 		echo "static ip..."
 		case "$1" in
 			centos6|centos7|fedora22|fedora23)
 				echo "init for centos|fedora"
-				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/swarm/user-data.static.centos > etc/user-data
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/${FLAG}/user-data.static.centos > etc/user-data
 				;;
 			ubuntu14.04)
 				echo "init for ubuntu"
-				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/swarm/user-data.static.ubuntu > etc/user-data	
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/${FLAG}/user-data.static.ubuntu > etc/user-data	
 				;;
 			*)
 				echo "'user-data' only support ubuntu14.04, fedora22, fedora23 and centos6 now"
@@ -262,11 +292,11 @@ EOF
 
 	# copy a script in (we could use Ansible for this kind of thing, but...)
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./etc/config ${USERNAME}@${GUEST_IP}:~
-	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init-swarm.sh ${USERNAME}@${GUEST_IP}:~
+	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init-${FLAG}.sh ${USERNAME}@${GUEST_IP}:~
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/set_ip.sh ${USERNAME}@${GUEST_IP}:~
 
 	# run the script
-	ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "./init-swarm.sh"
+	ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "./init-${FLAG}.sh"
 	case "$1" in
 		centos6|centos7|fedora22|fedora23)
 			ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "sed -r -i \"s@HOSTNAME=.*@HOSTNAME=${VM_NAME}@\" /etc/sysconfig/network"
@@ -285,7 +315,7 @@ fn_list(){
 	if [ $# -ne 0 ];then
 		cat <<EOF
 [usage]
-    ${SELF} list
+    ${SELF} ${FLAG} list
 EOF
 		exit 1
 	fi
@@ -342,9 +372,9 @@ fn_exec(){
 	if [[ $# -ne 2 ]] || [[ -z $2 ]] ;then
 		cat <<EOF
 [usage]
-    ${SELF} exec <vm_name> <command_line>
+    ${SELF} <flag> exec <vm_name> <command_line>
 [example]
-    ${SELF} exec node1 "top -b"
+    ${SELF} ${FLAG} exec node1 "top -b"
 EOF
 		exit 1
 	fi
@@ -369,9 +399,9 @@ fn_shutdown(){
 	if [ $# -ne 1 ];then
 		cat <<EOF
 [usage]
-    ${SELF} shutdown <vm_name>
+    ${SELF} <flag> shutdown <vm_name>
 [example]
-    ${SELF} shutdown node1
+    ${SELF} ${FLAG} shutdown node1
 EOF
 		exit 1
 	fi
@@ -412,9 +442,9 @@ fn_ssh(){
 if [ $# -ne 1 ];then
 		cat <<EOF
 [usage]
-    ${SELF} ssh <vm_name>
+    ${SELF} <flag> ssh <vm_name>
 [example]
-    ${SELF} ssh node1
+    ${SELF} $FLAG ssh node1
 EOF
 		exit 1
 	fi
@@ -441,9 +471,9 @@ fn_scp(){
 if [ $# -ne 3 ];then
 		cat <<EOF
 [usage]
-    ${SELF} scp <vm_name> <srcFile> <targetPath>
+    ${SELF} <flag> scp <vm_name> <srcFile> <targetPath>
 [example]
-    ${SELF} scp node1 ./file1 ~/
+    ${SELF} ${FLAG} scp node1 ./file1 ~/
 EOF
 		exit 1
 	fi
@@ -472,9 +502,9 @@ fn_stop(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
 [usage]
-    ${SELF} stop <vm_name>
+    ${SELF} <flag> stop <vm_name>
 [example]
-    ${SELF} stop node1
+    ${SELF} ${FLAG} stop node1
 EOF
 			exit 1
 		fi
@@ -501,10 +531,10 @@ fn_start(){
 	if [ $# -ne 2 ];then
 		cat <<EOF
 [usage]
-    ${SELF} start <vm_name> [ip]
+    ${SELF} <flag> start <vm_name> [ip]
 [example]
-	${SELF} start node1 # dhcp
-    ${SELF} start node1 192.168.122.128 #static ip
+	${SELF} ${FLAG} start node1 # dhcp
+    ${SELF} ${FLAG} start node1 192.168.122.128 #static ip
 EOF
 			exit 1
 	fi
@@ -548,17 +578,17 @@ EOF
 	echo "##### convert user data into an ISO image #####"
 	if [ -z ${STATIC_IP} ];then
 		echo "no old ip, no ip specified, so use dhcp..."
-		cat etc/swarm/user-data.dhcp > etc/user-data
+		cat etc/${FLAG}/user-data.dhcp > etc/user-data
 	else
 		echo "static ip..."
 		case "${IMG_TYPE}" in
 			centos6|centos7|fedora22|fedora23)
 				echo "init for centos|fedora"
-				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/swarm/user-data.static.centos > etc/user-data
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/${FLAG}/user-data.static.centos > etc/user-data
 				;;
 			ubuntu14.04)
 				echo "init for ubuntu"
-				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/swarm/user-data.static.ubuntu > etc/user-data	
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/${FLAG}/user-data.static.ubuntu > etc/user-data	
 				;;
 			*)
 				echo "'user-data' only support ubuntu14.04, fedora22, fedora23 and centos6 now"
@@ -601,9 +631,9 @@ fn_clone(){
 	if [ $# -ne 2 ];then
 			cat <<EOF
 [usage]
-    ${SELF} clone <source_vm_name> <target_vm_name>
+    ${SELF} <flag> clone <source_vm_name> <target_vm_name>
 [example]
-    ${SELF} clone node1 node2
+    ${SELF} ${FLAG} clone node1 node2
 EOF
 			exit 1
 		fi
@@ -676,9 +706,9 @@ fn_set_ip(){
 	if [ $# -ne 2 ];then
 			cat <<EOF
 [usage]
-    ${SELF} clone <source_vm_name> <target_vm_name>
+    ${SELF} <flag> clone <source_vm_name> <target_vm_name>
 [example]
-    ${SELF} clone node1 node2
+    ${SELF} ${FLAG} clone node1 node2
 EOF
 			exit 1
 		fi
@@ -743,7 +773,9 @@ if [ ! -d ${TMP_IMG} ];then
 	mkdir -p ${TMP_IMG}
 fi
 
-ACTION=$1
+
+ACTION="$2"
+#check action
 case ${ACTION} in
 	images)
 		cat <<EOF
@@ -763,36 +795,38 @@ case ${ACTION} in
 EOF
 		;;
 	list)
-		fn_list $2 $3
+		fn_list
 		;;
 	create)
-		fn_create $2 $3 $4 #<image> <vmName> <ip>
+		fn_create $3 $4 $5 #<image> <vmName> <ip>
 		;;
 	exec)
-		fn_exec $2 "$3"  #<vmName> <command>
+		fn_exec $3 "$4"  #<vmName> <command>
 		;;
 	ssh)
-		fn_ssh $2 $3 #<vmName>
+		fn_ssh $3 $4 #<vmName>
 		;;
 	stop)
-		fn_stop $2 $3 #<vmName>
+		fn_stop $3 $4 #<vmName>
 		;;
 	start)
-		fn_start $2 "$3" #<vmName> <ip>
+		fn_start $3 "$4" #<vmName> <ip>
 		;;
 	shutdown)
-		fn_shutdown $2 $3 #<vmName>
+		fn_shutdown $3 $4 #<vmName>
 		;;
 	clone)
-		fn_clone $2 $3 #<sourceVmName> <targetVMName>
+		fn_clone $3 $4 #<sourceVmName> <targetVMName>
 		;;
 	set_ip)
-		fn_set_ip $2 $3 #<vmName> <new_ip>
+		fn_set_ip $3 $4 #<vmName> <new_ip>
 		;;
 	scp)
-		fn_scp $2 $3 $4 #<vmName> <srcFile> <targetPath>
+		fn_scp $3 $4 $5 #<vmName> <srcFile> <targetPath>
 		;;
 	*)
 		fn_show_usage
 		;;
 esac
+
+

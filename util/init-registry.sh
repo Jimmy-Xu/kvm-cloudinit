@@ -143,7 +143,8 @@ elif [ "${_TYPE}" == "ubuntu" ];then
 		apt-key add /etc/apt/nginx_signing.key
 		apt-get update
 		DEBIAN_FRONTEND=noninteractive
-		apt-get install -y nginx
+
+		apt-get install -y -o DPkg::Options="--force-confold" nginx
 		nginx -v
 	fi
 
@@ -219,9 +220,18 @@ if [ ! -d ~/distribution ];then
 	cd ~/distribution
 else
 	cd ~/distribution
+	git checkout -- Dockerfile
 	git pull	
 fi
 
+echo "> patch distribution/Dockerfile"
+sed -i "/FROM golang:1.5.2/ a RUN wget http:\/\/mirrors.163.com\/.help\/sources.list.trusty -O \/etc\/apt\/sources.list\nRUN echo \'Acquire::Languages \"none\";\' > \/etc\/apt\/apt.conf.d\/99translations" Dockerfile
+sed -i "s/apt-get install -y/& --allow-unauthenticated=true/" Dockerfile 
+
+echo "> pull golang:1.5.2"
+docker pull golang:1.5.2
+
+echo "> build docker distribution"
 docker build --rm -t registry:latest .
 if [ $? -eq 0 ];then
 	echo "> start registry 2.0"
