@@ -2,8 +2,10 @@
 
 SELF=$(basename $0)
 sudo pwd
-USERNAME="stack"
-TMP_IMG="_tmp/devstack"
+
+USERNAME="root"
+TMP_IMG="_tmp/registry"
+
 
 echo "read from etc/config"
 echo "----------------------------------"
@@ -27,6 +29,7 @@ fn_show_usage() {
     ${SELF} list
     ${SELF} exec node1 "top -b"
     ${SELF} ssh node1
+    ${SELF} scp node1 ./file1 ~/
     ${SELF} stop node1
     ${SELF} start node1
     ${SELF} clone node1 node2
@@ -118,8 +121,8 @@ EOF
 
 	echo "bridge ${BR} is available"
 	echo "##### generate mac address#####"
-	MAC0=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
-	MAC1=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
+	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
+	
 
 
 	echo ##### prepare image #####"
@@ -133,17 +136,17 @@ EOF
 	echo "##### convert user data into an ISO image #####"
 	if [ -z ${STATIC_IP} ];then
 		echo "dhcp..."
-		cat etc/devstack/user-data.dhcp > etc/user-data
+		cat etc/registry/user-data.dhcp > etc/user-data
 	else
 		echo "static ip..."
 		case "$1" in
 			centos6|centos7|fedora22|fedora23)
 				echo "init for centos|fedora"
-				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/devstack/user-data.static.centos > etc/user-data
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/registry/user-data.static.centos > etc/user-data
 				;;
 			ubuntu14.04)
 				echo "init for ubuntu"
-				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/devstack/user-data.static.ubuntu > etc/user-data	
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/registry/user-data.static.ubuntu > etc/user-data	
 				;;
 			*)
 				echo "'user-data' only support ubuntu14.04, fedora22, fedora23 and centos6 now"
@@ -185,13 +188,13 @@ EOF
 
 	echo -e "\n##### start the VM #####"
 	# way1
-	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,vlan=0,macaddr=${MAC0} -net nic,model=virtio,vlan=1,macaddr=${MAC1} -net bridge,br=${BR},vlan=0 -net user,vlan=1 -hda ${IMG} -hdb $SEED_IMG -m 2G -nographic &
+	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=${BR} -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
 
-	#sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -drive file=${IMG},if=virtio -boot c -hdb $SEED_IMG -m 2G -nographic -redir :${SSH_PORT}::22&
+	#sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME}  -net nic -net user -drive file=${IMG},if=virtio -boot c -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22&
 	
 
 	# way2
-	#qemu-system-x86_64 -enable-kvm -net nic,model=virtio,macaddr=00:16:3e:3a:c0:99 -net tap,ifname=vnet10,script=no,downscript=no -hda $IMG -hdb _image/seed.img -m 2G -nographic -redir :2222::22 &
+	#qemu-system-x86_64 -enable-kvm -net nic,model=virtio,macaddr=00:16:3e:3a:c0:99 -net tap,ifname=vnet10,script=no,downscript=no -hda $IMG -hdb _image/seed.img -m 1G -nographic -redir :2222::22 &
 
 	#way3
 	#sudo qemu-system-x86_64 \
@@ -206,7 +209,7 @@ EOF
 	# -no-reboot \
 	# -rtc base=utc,driftfix=slew \
 	# -smp 1 \
-	# -net nic -net user -hda $IMG -hdb $SEED_IMG -m 2G -nographic -redir :${SSH_PORT}::22 &
+	# -net nic -net user -hda $IMG -hdb $SEED_IMG -m 1G -nographic -redir :${SSH_PORT}::22 &
 
 	# remove the overlay (qemu will keep it open as needed)
 	#sleep 10
@@ -224,7 +227,7 @@ EOF
 				echo "Get guest ip timeout, quit!"
 				exit 1
 			fi
-			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | grep "vlan=0" | awk -F"=" '{print $NF}')
+			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 			echo "$cnt:waiting guest dhcp ip of mac(${MAC_ADDR})"
 			cnt=$((cnt + 1))
@@ -240,7 +243,7 @@ EOF
 			if [ "${STATIC_IP}" != "" ];then
 				ping -c 2 ${STATIC_IP}
 			fi
-			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | grep "vlan=0" | awk -F"=" '{print $NF}')
+			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp -n  | grep "${STATIC_IP}.*${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 			echo "$cnt:waiting guest static ip(${STATIC_IP}) of mac(${MAC_ADDR})"
 			cnt=$((cnt + 1))
@@ -254,13 +257,12 @@ EOF
 	SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
 
 	# copy a script in (we could use Ansible for this kind of thing, but...)
-	echo "rsync -a -e \"ssh ${SSH_OPT} -oConnectionAttempts=60\" ./etc/config ${USERNAME}@${GUEST_IP}:~"
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./etc/config ${USERNAME}@${GUEST_IP}:~
-	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init-devstack.sh ${USERNAME}@${GUEST_IP}:~
+	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init-registry.sh ${USERNAME}@${GUEST_IP}:~
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/set_ip.sh ${USERNAME}@${GUEST_IP}:~
 
 	# run the script
-	ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "./init-devstack.sh"
+	ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "./init-registry.sh"
 	case "$1" in
 		centos6|centos7|fedora22|fedora23)
 			ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "sed -r -i \"s@HOSTNAME=.*@HOSTNAME=${VM_NAME}@\" /etc/sysconfig/network"
@@ -301,7 +303,7 @@ EOF
 				HDA_IMG=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
 				BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
 
-				MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | grep "vlan=0" | awk -F"=" '{print $NF}')
+				MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 				GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 				if [ -z ${GUEST_IP} ];then
@@ -328,7 +330,7 @@ EOF
 	VM_NAME=$1
 	CMD_LINE=$2
 
-	MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | grep "vlan=0" | awk -F"=" '{print $NF}')
+	MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 	if [ ! -z ${MAC_ADDR} ];then
 		GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 		SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
@@ -354,13 +356,13 @@ EOF
 	fi
 	VM_NAME=$1
 	if [[ -f ${TMP_IMG}/${VM_NAME}-seed.img ]] || [[ -f ${TMP_IMG}/${VM_NAME}.img ]];then
-		MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | grep "vlan=0" | awk -F"=" '{print $NF}')
+		MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 		GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 		if [[ ! -z ${GUEST_IP} ]];then
 			echo "shutdown running VM: ${VM_NAME}"
 			SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
-			ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "sudo shutdown -h now"
+			ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "shutdown -h now"
 			sleep 2
 		else
 			echo "VM ${VM_NAME} not running"
@@ -398,7 +400,7 @@ EOF
 	
 	#echo "VM_NAME: ${VM_NAME}"
 
-	MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | grep "vlan=0" | awk -F"=" '{print $NF}')
+	MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 	if  [ ! -z ${MAC_ADDR} ];then
 		GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
@@ -412,6 +414,37 @@ EOF
 	fi
 
 }
+
+fn_scp(){
+if [ $# -ne 3 ];then
+		cat <<EOF
+[usage]
+    ${SELF} scp <vm_name> <srcFile> <targetPath>
+[example]
+    ${SELF} scp node1 ./file1 ~/
+EOF
+		exit 1
+	fi
+	VM_NAME=$1
+	SRC_FILE=$2
+	TGT_PATH=$3
+	
+	#echo "VM_NAME: ${VM_NAME}"
+
+	MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+	if  [ ! -z ${MAC_ADDR} ];then
+		GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
+
+		SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+		echo "scp ${SSH_OPT} ${SRC_FILE} ${USERNAME}@${GUEST_IP}:${TGT_PATH}"
+		echo "----------------------------------------------------------------------------------------------------------"
+		scp ${SSH_OPT} ${SRC_FILE} ${USERNAME}@${GUEST_IP}:${TGT_PATH}
+		echo -e "Done!"
+	else
+		echo "vm name '${VM_NAME}' not found"
+	fi
+}
+
 
 fn_stop(){
 	if [ $# -ne 1 ];then
@@ -478,9 +511,8 @@ EOF
 	IMG="${TMP_IMG}/${VM_NAME}.img"
 	SEED_IMG="${TMP_IMG}/${VM_NAME}-seed.img"
 
-	MAC0=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
-	MAC1=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
-	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,vlan=0,macaddr=${MAC0} -net nic,model=virtio,vlan=1,macaddr=${MAC1} -net bridge,br=${BR},vlan=0 -net user,vlan=1 -hda ${IMG} -hdb $SEED_IMG -m 2G -nographic &
+	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
+	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=${BR} -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
 
 }
 
@@ -623,7 +655,6 @@ if [ ! -d ${TMP_IMG} ];then
 	mkdir -p ${TMP_IMG}
 fi
 
-
 ACTION=$1
 case ${ACTION} in
 	images)
@@ -669,6 +700,9 @@ EOF
 		;;
 	set_ip)
 		fn_set_ip $2 $3 #<vmName> <new_ip>
+		;;
+	scp)
+		fn_scp $2 $3 $4 #<vmName> <srcFile> <targetPath>
 		;;
 	*)
 		fn_show_usage

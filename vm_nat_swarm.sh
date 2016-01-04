@@ -1,10 +1,10 @@
 #!/bin/bash
 
-SELF=$(basename $0)
+SELF=./$(basename $0)
 sudo pwd
 
 USERNAME="root"
-TMP_IMG="_tmp/docker"
+TMP_IMG="_tmp/swarm"
 
 
 echo "read from etc/config"
@@ -29,8 +29,10 @@ fn_show_usage() {
     ${SELF} list
     ${SELF} exec node1 "top -b"
     ${SELF} ssh node1
+    ${SELF} scp node1 ./file1 ~/
     ${SELF} stop node1
     ${SELF} start node1
+    ${SELF} clone node1 node2
     ${SELF} shutdown node1
 
 [usage]
@@ -130,21 +132,22 @@ EOF
 	# (we probably could have used -snapshot)
 	IMG="${TMP_IMG}/${VM_NAME}.img"
 	SEED_IMG="${TMP_IMG}/${VM_NAME}-seed.img"
+	CFG_IMG="${TMP_IMG}/${VM_NAME}.cfg"
 
 	echo "##### convert user data into an ISO image #####"
 	if [ -z ${STATIC_IP} ];then
 		echo "dhcp..."
-		cat etc/vm_nat/user-data.dhcp > etc/user-data
+		cat etc/swarm/user-data.dhcp > etc/user-data
 	else
 		echo "static ip..."
 		case "$1" in
 			centos6|centos7|fedora22|fedora23)
 				echo "init for centos|fedora"
-				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/vm_nat/user-data.static.centos > etc/user-data
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/swarm/user-data.static.centos > etc/user-data
 				;;
 			ubuntu14.04)
 				echo "init for ubuntu"
-				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/vm_nat/user-data.static.ubuntu > etc/user-data	
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/swarm/user-data.static.ubuntu > etc/user-data	
 				;;
 			*)
 				echo "'user-data' only support ubuntu14.04, fedora22, fedora23 and centos6 now"
@@ -152,6 +155,9 @@ EOF
 				;;
 		esac
 	fi
+	echo IMG_TYPE=$1 > $CFG_IMG # save to cfg
+	echo IP=${STATIC_IP} >> $CFG_IMG
+
 
 	echo "##### change hostname #####"
 	sed -i "s/{HOSTNAME}/${VM_NAME}/" etc/user-data
@@ -239,7 +245,7 @@ EOF
 				exit 1
 			fi
 			if [ "${STATIC_IP}" != "" ];then
-				ping -c 2 ${STATIC_IP}
+				ping -c1 -W1 ${STATIC_IP}
 			fi
 			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp -n  | grep "${STATIC_IP}.*${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
@@ -256,11 +262,11 @@ EOF
 
 	# copy a script in (we could use Ansible for this kind of thing, but...)
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./etc/config ${USERNAME}@${GUEST_IP}:~
-	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init-docker.sh ${USERNAME}@${GUEST_IP}:~
+	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/init-swarm.sh ${USERNAME}@${GUEST_IP}:~
 	rsync -a -e "ssh ${SSH_OPT} -oConnectionAttempts=60" ./util/set_ip.sh ${USERNAME}@${GUEST_IP}:~
 
 	# run the script
-	ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "./init-docker.sh"
+	ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "./init-swarm.sh"
 	case "$1" in
 		centos6|centos7|fedora22|fedora23)
 			ssh ${SSH_OPT} ${USERNAME}@${GUEST_IP} "sed -r -i \"s@HOSTNAME=.*@HOSTNAME=${VM_NAME}@\" /etc/sysconfig/network"
@@ -285,7 +291,7 @@ EOF
 	fi
 		
 	#output
-	echo -e "vmName\tPID\tmac_addr\t\tguest_ip\tbacking_image"
+	echo -e "VMNAME\t\tPID\tMAC_ADDR\t\tCURRENT_IP\tIP_TYPE\tCONFIG_IP\tBACKING_IMAGE"
 
 	ls ${TMP_IMG}/*-seed.img >/dev/null 2>&1
 	if [ $? -eq 0 ];then
@@ -297,6 +303,11 @@ EOF
 			GUEST_IP=""
 			BACKING_FILE=""
 			PID=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
+			CFG_IMG="${VM_NAME}.cfg"
+			CONFIG_IP=$(grep "IP=" $CFG_IMG | cut -d"=" -f2)
+			if [ ! -z ${CONFIG_IP} ];then
+				ping -c1 -W1 ${CONFIG_IP} >/dev/null 2>&1
+			fi
 			if [ ! -z ${PID} ];then
 				HDA_IMG=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
 				BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
@@ -305,10 +316,22 @@ EOF
 				GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
 				if [ -z ${GUEST_IP} ];then
-					GUEST_IP="               "
+					GUEST_IP="???.???.???.???"
 				fi
+			else
+				PID="-----"
+				MAC_ADDR="--:--:--:--:--:--"
+				GUEST_IP="---.---.---.---"
+				BACKING_FILE=$(grep "IMG_TYPE=" $CFG_IMG | cut -d"=" -f2)
 			fi
-			echo -e "$VM_NAME\t${PID}\t${MAC_ADDR}\t${GUEST_IP}\t${BACKING_FILE}"
+			if [ -z ${CONFIG_IP} ];then
+				IP_TYPE="dhcp"
+				CONFIG_IP="---.---.---.---"
+			else
+				IP_TYPE="static"
+			fi
+
+			printf "%-16s%s\t%s\t%s\t%s\t%s\t%s\n" $VM_NAME $PID $MAC_ADDR $GUEST_IP $IP_TYPE $CONFIG_IP $BACKING_FILE
 		done
 		cd - > /dev/null
 	fi
@@ -366,7 +389,8 @@ EOF
 			echo "VM ${VM_NAME} not running"
 		fi
 		rm -rf ${TMP_IMG}/${VM_NAME}.img
-		rm -rf ${TMP_IMG}/${VM_NAME}-seed.img		
+		rm -rf ${TMP_IMG}/${VM_NAME}-seed.img
+		rm -rf ${TMP_IMG}/${VM_NAME}.cfg
 	fi
 	
 	#check image again
@@ -413,6 +437,37 @@ EOF
 
 }
 
+fn_scp(){
+if [ $# -ne 3 ];then
+		cat <<EOF
+[usage]
+    ${SELF} scp <vm_name> <srcFile> <targetPath>
+[example]
+    ${SELF} scp node1 ./file1 ~/
+EOF
+		exit 1
+	fi
+	VM_NAME=$1
+	SRC_FILE=$2
+	TGT_PATH=$3
+	
+	#echo "VM_NAME: ${VM_NAME}"
+
+	MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
+	if  [ ! -z ${MAC_ADDR} ];then
+		GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
+
+		SSH_OPT="-q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no "
+		echo "scp ${SSH_OPT} ${SRC_FILE} ${USERNAME}@${GUEST_IP}:${TGT_PATH}"
+		echo "----------------------------------------------------------------------------------------------------------"
+		scp ${SSH_OPT} ${SRC_FILE} ${USERNAME}@${GUEST_IP}:${TGT_PATH}
+		echo -e "Done!"
+	else
+		echo "vm name '${VM_NAME}' not found"
+	fi
+}
+
+
 fn_stop(){
 	if [ $# -ne 1 ];then
 			cat <<EOF
@@ -443,16 +498,20 @@ EOF
 }
 
 fn_start(){
-	if [ $# -ne 1 ];then
-			cat <<EOF
+	if [ $# -ne 2 ];then
+		cat <<EOF
 [usage]
-    ${SELF} start <vm_name>
+    ${SELF} start <vm_name> [ip]
 [example]
-    ${SELF} start node1
+	${SELF} start node1 # dhcp
+    ${SELF} start node1 192.168.122.128 #static ip
 EOF
 			exit 1
-		fi
+	fi
 	VM_NAME=$1
+	STATIC_IP=$2
+	echo "VM_NAME   : ${VM_NAME}"
+	echo "STATIC_IP : ${STATIC_IP}"
 
 	#check image
 	if [[ ! -f ${TMP_IMG}/${VM_NAME}-seed.img ]] && [[ ! -f ${TMP_IMG}/${VM_NAME}.img ]];then
@@ -477,6 +536,60 @@ EOF
 	echo "starting VM: ${VM_NAME}, please wait..."
 	IMG="${TMP_IMG}/${VM_NAME}.img"
 	SEED_IMG="${TMP_IMG}/${VM_NAME}-seed.img"
+	CFG_IMG="${TMP_IMG}/${VM_NAME}.cfg" #load from cfg
+	IMG_TYPE=$(grep "IMG_TYPE=" $CFG_IMG | cut -d"=" -f2 )
+
+	if [ -z ${STATIC_IP} ];then
+		echo "get IP from ${CFG_IMG}..."
+		STATIC_IP=$(grep "IP=" ${CFG_IMG} | cut -d"=" -f2)
+		echo "found IP : ${STATIC_IP}"
+	fi
+
+	echo "##### convert user data into an ISO image #####"
+	if [ -z ${STATIC_IP} ];then
+		echo "no old ip, no ip specified, so use dhcp..."
+		cat etc/swarm/user-data.dhcp > etc/user-data
+	else
+		echo "static ip..."
+		case "${IMG_TYPE}" in
+			centos6|centos7|fedora22|fedora23)
+				echo "init for centos|fedora"
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/swarm/user-data.static.centos > etc/user-data
+				;;
+			ubuntu14.04)
+				echo "init for ubuntu"
+				sed "s/{STATIC_IP}/${STATIC_IP}/" etc/swarm/user-data.static.ubuntu > etc/user-data	
+				;;
+			*)
+				echo "'user-data' only support ubuntu14.04, fedora22, fedora23 and centos6 now"
+				exit 1
+				;;
+		esac
+	fi
+	if [ ! -z ${STATIC_IP} ];then
+		sed -r -i "s:IP=.*:IP=${STATIC_IP}:" ${CFG_IMG}
+	fi
+
+	echo "##### change hostname #####"
+	sed -i "s/{HOSTNAME}/${VM_NAME}/" etc/user-data
+
+	echo "##### change network prefix #####"
+	sed -i "s/{NETWORK_PREFIX}/${NETWORK_PREFIX}/" etc/user-data	
+
+	echo "etc/user-data"
+	echo "-----------------------------------"
+	cat etc/user-data
+	echo "-----------------------------------"
+	echo "##### generate seed.img: ${SEED_IMG} #####"	
+	cloud-localds ${SEED_IMG} etc/user-data
+
+	if [ -f ${SEED_IMG} ];then
+		echo "${SEED_IMG} generate succeed"
+	else
+		echo "${SEED_IMG} generate failed"
+		exit 1
+	fi
+
 
 	MAC=$(hexdump -n3 -e'/3 "52:54:00" 3/1 ":%02X"' /dev/random | tr '[A-Z]' '[a-z]')
 	sudo qemu-system-x86_64 -enable-kvm -name ${VM_NAME} -net nic,model=virtio,macaddr=${MAC} -net bridge,br=${BR} -hda ${IMG} -hdb $SEED_IMG -m 1G -nographic &
@@ -524,20 +637,28 @@ EOF
 	echo "PID: ${PID}"
 	if [ ! -z ${PID} ];then
 		echo "vmName: ${VM_NAME} is running, please stop it fisrt"
-		echo "  ./vm_nat.sh stop ${VM_NAME}"
+		echo "  ${SELF} stop ${VM_NAME}"
 		exit 1
 	fi
 
 	echo "start clone image of VM: ${VM_NAME} -> ${NEW_VM_NAME}, please wait..."
 	IMG="${TMP_IMG}/${VM_NAME}.img"
 	SEED_IMG="${TMP_IMG}/${VM_NAME}-seed.img"
+	CFG_IMG="${TMP_IMG}/${VM_NAME}.cfg"
+
 	NEW_IMG="${TMP_IMG}/${NEW_VM_NAME}.img"
 	NEW_SEED_IMG="${TMP_IMG}/${NEW_VM_NAME}-seed.img"
-	
+	NEW_CFG_IMG="${TMP_IMG}/${NEW_VM_NAME}.cfg"
+
 	cp ${IMG} ${NEW_IMG}
 	cp ${SEED_IMG} ${NEW_SEED_IMG}
+	cp ${CFG_IMG} ${NEW_CFG_IMG}
 
-	if [[ -f ${TMP_IMG}/${NEW_VM_NAME}-seed.img ]] && [[ -f ${TMP_IMG}/${NEW_VM_NAME}.img ]];then
+	grep IMG_TYPE ${CFG_IMG} > $NEW_CFG_IMG # save to cfg
+	echo IP="" >> $NEW_CFG_IMG
+
+
+	if [[ -f ${TMP_IMG}/${NEW_VM_NAME}-seed.img ]] && [[ -f ${TMP_IMG}/${NEW_VM_NAME}.img ]] && [[ -f ${CFG_IMG}/${NEW_CFG_IMG}.img ]];then
 		echo "clone ${VM_NAME} to ${NEW_VM_NAME} succeed!"
 	else
 		echo "image of VM ${NEW_VM_NAME} doesn't existed, clone failed"
@@ -591,7 +712,7 @@ EOF
 	echo "PID: ${PID}"
 	if [ ! -z ${PID} ];then
 		echo "vmName: ${VM_NAME} is running, please stop it fisrt"
-		echo "  ./vm_nat.sh stop ${VM_NAME}"
+		echo "  ${SELF} stop ${VM_NAME}"
 		exit 1
 	fi
 
@@ -657,7 +778,7 @@ EOF
 		fn_stop $2 $3 #<vmName>
 		;;
 	start)
-		fn_start $2 $3 #<vmName> <port>
+		fn_start $2 "$3" #<vmName> <ip>
 		;;
 	shutdown)
 		fn_shutdown $2 $3 #<vmName>
@@ -667,6 +788,9 @@ EOF
 		;;
 	set_ip)
 		fn_set_ip $2 $3 #<vmName> <new_ip>
+		;;
+	scp)
+		fn_scp $2 $3 $4 #<vmName> <srcFile> <targetPath>
 		;;
 	*)
 		fn_show_usage

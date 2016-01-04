@@ -117,6 +117,7 @@ else
 	fi
 fi
 
+sleep 2
 docker info
 if [ $? -eq 0 ];then
 

@@ -1,19 +1,41 @@
 #!/bin/bash
+# set ip and hostname
 
 echo "read from config"
 NETWORK_PREFIX=$(grep NETWORK_PREFIX config | cut -d"=" -f2)
 
-if [ $# -eq 1 ];then
+if [ $# -eq 2 ];then
 
-	#check os
+	NEW_HOSTNAME=$1
+	NEW_IP=$2
+
+	echo "NEW_HOSTNAME: $NEW_HOSTNAME"
+	echo "NEW_IP      : ${NEW_IP}"
+
+	echo "> change hostname from $(hostname) to ${NEW_HOSTNAME}..."
+	sed -i "/127.0.0.1 $(hostname)$/d" /etc/hosts
+	echo 127.0.0.1 $NEW_HOSTNAME >> /etc/hosts
+	hostname $NEW_HOSTNAME
+
+	echo "> change /etc/hostname..."
+	echo $NEW_HOSTNAME > /etc/hostname
+
+	echo "> show /etc/hosts ..."
+	cat /etc/hosts
+
+	echo "> show /etc/hostname ..."
+	cat /etc/hostname
+
+
+	echo ">check os..."
 	cat /etc/issue | grep -i ubuntu
 	if [ $? -eq 0 ];then
-		echo "set static ip for ubuntu/debian"
+		echo "> set static ip for ubuntu/debian"
 		cat <<EOF > /etc/network/interfaces.d/eth0.cfg 
 auto eth0
 iface eth0 inet static
 
-address `echo $1`
+address `echo $NEW_IP`
 netmask 255.255.255.0
 network `echo ${NETWORK_PREFIX}`.0
 broadcast `echo ${NETWORK_PREFIX}`.255
@@ -28,14 +50,14 @@ EOF
 	else
 		cat /etc/issue | grep -i -E "(centos|fedora)" || cat /etc/os-release | grep -i -E "(centos|fedora)"
 		if [ $? -eq 0 ];then
-			echo "set static ip for centos|fedora"
+			echo "> set static ip for centos|fedora"
 			cat <<EOF > /etc/sysconfig/network-scripts/ifcfg-eth0
 DEVICE=eth0
 BOOTPROTO=none
 IPV6INIT=no
 ONBOOT=yes
 TYPE=Ethernet
-IPADDR=`echo $1`
+IPADDR=`echo $NEW_IP`
 NETWORK=`echo ${NETWORK_PREFIX}.0`
 NETMASK=255.255.255.0
 NM_CONTROLLED=no
@@ -53,5 +75,6 @@ EOF
 
 	echo "please reboot this vm"
 else
-	echo "usage: ./set_ip.sh ${NETWORK_PREFIX}.128"
+	echo "usage: ./set_ip.sh <new_hostname> <new_ip>"
+	echo "eg: ./set_ip.sh node1 ${NETWORK_PREFIX}.128"
 fi
