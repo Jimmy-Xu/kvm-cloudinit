@@ -1,4 +1,4 @@
-#QuickStart: Create Swarm Cluster with vm_nat_swarm.sh
+#QuickStart: Create Swarm Cluster
 
 
 ## 1.prepare
@@ -110,21 +110,23 @@
 
 ## 8.pull image in cluster
 
-	$ docker pull nginx
-	Using default tag: latest
-	node1: Pulling nginx:latest... : downloaded 
-	node2: Pulling nginx:latest... : downloaded 
+	$ $docker pull nginx:1.9.9
+	node3: Pulling nginx:1.9.9... : downloaded
+	node2: Pulling nginx:1.9.9... : downloaded
+	node1: Pulling nginx:1.9.9... : downloaded
 
 
 ## 9.run container in cluster
 
-	$ docker run -d --name nginx1 -p 8888:80 nginx
-	$ docker run -d --name nginx2 -p 8888:80 nginx
+	$ docker run -d --name nginx1 -p 8888:80 nginx:1.9.9
+	$ docker run -d --name nginx2 -p 8888:80 nginx:1.9.9
+	$ docker run -d --name nginx3 -p 8888:80 nginx:1.9.9
 
 
 ## 10.list container in cluster
 
 	$ docker ps
-	CONTAINER ID   IMAGE   COMMAND                  CREATED         STATUS         PORTS                                   NAMES
-	8a256b47fe3c   nginx   "nginx -g 'daemon off"   4 minutes ago   Up 4 minutes   443/tcp, 192.168.122.129:8888->80/tcp   node1/nginx2
-	c5ce7f82ed73   nginx   "nginx -g 'daemon off"   4 minutes ago   Up 4 minutes   443/tcp, 192.168.122.130:8888->80/tcp   node2/nginx1
+	CONTAINER ID   IMAGE         COMMAND                  CREATED         STATUS         PORTS                                   NAMES
+	8a256b47fe3c   nginx:1.9.9   "nginx -g 'daemon off"   4 minutes ago   Up 4 minutes   443/tcp, 192.168.122.129:8888->80/tcp   node1/nginx3
+	c5ce7f82ed73   nginx:1.9.9   "nginx -g 'daemon off"   4 minutes ago   Up 4 minutes   443/tcp, 192.168.122.130:8888->80/tcp   node2/nginx2
+	5c9ced6436e9   nginx:1.9.9   "nginx -g 'daemon off"   4 minutes ago   Up 4 minutes   443/tcp, 192.168.122.130:8888->80/tcp   node3/nginx1

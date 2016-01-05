@@ -40,29 +40,36 @@
 
 	## config network and bridge
 	vi etc/config
+
 	### for NAT network
 	BR=virbr0
 	NETWORK_PREFIX=192.168.122
 	HOST_IP=192.168.122.1
+	
 	### for Bridge network
 	BR=br0
 	NETWORK_PREFIX=192.168.1
 	HOST_IP=192.168.1.141
 
+
 	## Create new VM
+
 	### dhcp
-	./vm_nat.sh create ubuntu14.04 node1
+	./vm_nat.sh swarm create ubuntu14.04 node1
+	
 	### static ip
-	./vm_nat.sh create ubuntu14.04 node2 192.168.122.128
+	./vm_nat.sh swarm create ubuntu14.04 node2 192.168.122.128
+
 
 	## Show VM list
-	./vm_nat.sh list
-	vmName	PID	mac_addr		guest_ip	backing_image
-	node1	27699	52:54:00:ed:08:13	192.168.122.204	ubuntu14.04.img <=
-	node2	28009	52:54:00:05:84:cc	192.168.122.128	ubuntu14.04.img
+	./vm_nat.sh swarm list
+	VMNAME		PID		MAC_ADDR			CURRENT_IP		IP_TYPE	CONFIG_IP		BACKING_IMAGE
+	node1       8584	52:54:00:7f:8f:10	192.168.122.129	dhcp	---.---.---.---	ubuntu14.04.img
+	swarm       7583	52:54:00:29:6d:7a	192.168.122.128	static	192.168.122.130	ubuntu14.04.img
+
 
 	## Run command line in VM though SSH
-	./vm_nat.sh exec node1 "uname -a"
+	./vm_nat.sh swarm exec node1 "uname -a"
 	---------------------------------------------------------------------------------------------------------------------------
 	> ssh -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no  root@192.168.122.119 "bash -c 'uname -a'"
 	---------------------------------------------------------------------------------------------------------------------------
@@ -70,43 +77,30 @@
 	---------------------------------------------------------------------------------------------------------------------------
 
 	## Shutdown VM(kill qemu process, delete image file)
-	./vm_nat.sh shutdown node1
+	./vm_nat.sh swarm shutdown node1
 
 #### Example: Clone vm (node1 -> node2)
 
-	stop -> clone -> change ip of src_vm -> start src_vm -> start tgt_vm 
+	stop src_vm -> clone -> start src_vm -> start tgt_vm 
 	
 	## Stop node1
-	$ ./vm_nat.sh stop node1
+	$ ./vm_nat.sh swarm stop node1
 
-	## Clone node1 to swarm(all stopped)
-	$ ./vm_nat.sh clone node1 swarm
+	## Clone node1 to node2(all stopped)
+	$ ./vm_nat.sh swarm clone node1 node2
 
-	## Start node1
-	$ ./vm_nat.sh start node1
+	## Start node1(with config_ip[dhcp/static_ip])
+	$ ./vm_nat.sh swarm start node1
 
-	## connect to node1
-	$ ./vm_nat.sh ssh node1
-	
-	##run the following command in vm
-	root@node1:~# ./set_ip.sh 192.168.122.200
-	root@node1:~# exit
-
-	## Stop VM(kill qemu process, keep image file)
-	$ ./vm_nat.sh stop node1
-
-	## Start node1
-	$ ./vm_nat.sh start node1
-
-	## Start swarm
-	$ ./vm_nat.sh start swarm
+	## Start node2(with static_ip)
+	$ ./vm_nat.sh swarm start node2 192.168.122.130
 
 	## Show VM list again
-	$ ./vm_nat.sh list
-	vmName	PID		mac_addr			guest_ip		backing_image
-	node1	29668	52:54:00:46:33:61	192.168.122.100	ubuntu14.04.img <=
-	node2	30685	52:54:00:a3:64:67	192.168.122.128	ubuntu14.04.img
-	swarm	29931	52:54:00:de:3b:a3	192.168.122.200	ubuntu14.04.img <=
+	$ ./vm_nat.sh swarm list
+	VMNAME	PID		MAC_ADDR			CURRENT_IP		IP_TYPE	CONFIG_IP		BACKING_IMAGE
+	node1   8584	52:54:00:7f:8f:10	192.168.122.129	dhcp	---.---.---.---	ubuntu14.04.img
+	node2   9213	52:54:00:00:7a:5b	192.168.122.130	static	192.168.122.130	ubuntu14.04.img
+	swarm   7583	52:54:00:29:6d:7a	192.168.122.128	static	192.168.122.128	ubuntu14.04.img
 
 
 #### Example: connect remote docker daemon
@@ -130,7 +124,7 @@
 	busybox      latest   ac6a7980c6c2   13 days ago   1.113 MB
 
 	# show images (2)
-	$./vm_nat.sh exec node2 "docker images"
+	$./vm_nat.sh swarm exec node2 "docker images"
 	---------------------------------------------------------------------------------------------------------------------------
 	> ssh -q -i etc/.ssh/id_rsa -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no  root@192.168.122.128 "bash -c 'docker images'"
 	---------------------------------------------------------------------------------------------------------------------------

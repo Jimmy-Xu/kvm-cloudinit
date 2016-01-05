@@ -1,6 +1,14 @@
 
-vm_nat_docker.sh: create vm with docker
+#create vm with docker
+	
+	./vm_nat.sh swarm <action> <option>
 
-vm_nat_devstack.sh: create vm with devstack(openstack dev env)
 
-vm_nat_registry.sh: create vm with docker distribution(private registry)
+#create vm with devstack(TODO)
+	
+	./vm_nat.sh devstack <action> <option>
+
+
+#create vm with docker distribution(TODO)
+
+	./vm_nat.sh registry <action> <option>
