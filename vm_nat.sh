@@ -275,7 +275,7 @@ EOF
 				exit 1
 			fi
 			if [ "${STATIC_IP}" != "" ];then
-				ping -c1 -W1 ${STATIC_IP}
+				ping -c2 -W1 ${STATIC_IP}
 			fi
 			MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 			GUEST_IP=$(sudo arp -n  | grep "${STATIC_IP}.*${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
@@ -336,7 +336,7 @@ EOF
 			CFG_IMG="${VM_NAME}.cfg"
 			CONFIG_IP=$(grep "IP=" $CFG_IMG | cut -d"=" -f2)
 			if [ ! -z ${CONFIG_IP} ];then
-				ping -c1 -W1 ${CONFIG_IP} >/dev/null 2>&1
+				ping -c2 -W1 ${CONFIG_IP} >/dev/null 2>&1
 			fi
 			if [ ! -z ${PID} ];then
 				HDA_IMG=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
