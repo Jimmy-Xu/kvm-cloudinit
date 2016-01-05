@@ -335,9 +335,6 @@ EOF
 			PID=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print $2}' )
 			CFG_IMG="${VM_NAME}.cfg"
 			CONFIG_IP=$(grep "IP=" $CFG_IMG | cut -d"=" -f2)
-			if [ ! -z ${CONFIG_IP} ];then
-				ping -c2 -W1 ${CONFIG_IP} >/dev/null 2>&1
-			fi
 			if [ ! -z ${PID} ];then
 				HDA_IMG=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"-hda")>0){print $(i+1) }} }')
 				BACKING_FILE=$(qemu-img info `pwd`/../../$HDA_IMG | grep "backing file" | awk 'BEGIN{FS="/"}{print $NF}')
@@ -345,7 +342,13 @@ EOF
 				MAC_ADDR=$(ps -ef | grep "qemu-system-x86_64.*\-name ${VM_NAME} " | grep "${TMP_IMG}/" | grep -Ev "(sudo|grep)" | awk '{print substr($0,49)}' | awk '{for (i=1;i<=NF;i++){if (index($i,"macaddr=")>0){print $(i) }} }' | awk -F"=" '{print $NF}')
 				GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
 
+				if [[ ! -z ${CONFIG_IP} ]] && [[ -z ${GUEST_IP} ]] ;then
+					ping -c2 -W1 ${CONFIG_IP} >/dev/null 2>&1
+					#get current_ip again
+					GUEST_IP=$(sudo arp -n  | grep "${MAC_ADDR}" |  grep -v "incomplete" | awk '{print $1}' | head -n 1 ) 
+				fi
 				if [ -z ${GUEST_IP} ];then
+					# still can not get current_ip
 					GUEST_IP="???.???.???.???"
 				fi
 			else
