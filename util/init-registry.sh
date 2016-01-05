@@ -132,6 +132,7 @@ elif [ "${_TYPE}" == "ubuntu" ];then
 	echo "> install distribution..."
 
 	echo "> install apache"
+	apt-get update
 	apt-get install -y apache2-utils
 	
 	echo "> install nginx"

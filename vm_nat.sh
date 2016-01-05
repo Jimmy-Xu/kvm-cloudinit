@@ -189,11 +189,20 @@ EOF
 	echo IP=${STATIC_IP} >> $CFG_IMG
 
 
-	echo "##### change hostname #####"
+	echo "##### update hostname #####"
 	sed -i "s/{HOSTNAME}/${VM_NAME}/" etc/user-data
 
-	echo "##### change network prefix #####"
-	sed -i "s/{NETWORK_PREFIX}/${NETWORK_PREFIX}/" etc/user-data	
+	echo "##### update network prefix #####"
+	sed -i "s/{NETWORK_PREFIX}/${NETWORK_PREFIX}/" etc/user-data
+
+	echo "##### update host_ip #####"
+	HOST_IP=$(grep HOST_IP etc/config | cut -d"=" -f2)
+	if [ -z ${HOST_IP} ];then
+		echo "HOST_IP can not be empty"
+		exit 1
+	fi
+	sed -i "s/{HOST_IP}/${HOST_IP}/" etc/user-data
+
 
 	echo "etc/user-data"
 	echo "-----------------------------------"
@@ -603,11 +612,19 @@ EOF
 		sed -r -i "s:IP=.*:IP=${STATIC_IP}:" ${CFG_IMG}
 	fi
 
-	echo "##### change hostname #####"
+	echo "##### update hostname #####"
 	sed -i "s/{HOSTNAME}/${VM_NAME}/" etc/user-data
 
-	echo "##### change network prefix #####"
+	echo "##### update network prefix #####"
 	sed -i "s/{NETWORK_PREFIX}/${NETWORK_PREFIX}/" etc/user-data	
+
+	echo "##### update host_ip #####"
+	HOST_IP=$(grep HOST_IP etc/config | cut -d"=" -f2)
+	if [ -z ${HOST_IP} ];then
+		echo "HOST_IP can not be empty"
+		exit 1
+	fi
+	sed -i "s/{HOST_IP}/${HOST_IP}/" etc/user-data
 
 	echo "etc/user-data"
 	echo "-----------------------------------"
