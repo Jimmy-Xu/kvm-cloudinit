@@ -10,6 +10,12 @@ echo "== init =================="
 echo "read from config"
 HOST_IP=$(grep HOST_IP config | cut -d"=" -f2)
 
+echo "add FQDN to /etc/hosts..."
+SELF_IP=$(ip route | grep eth0 | grep -v default | awk -v hostname=$(hostname) '{printf "%s %s.hyper.sh %s\n", $NF, hostname, hostname}')
+sed -i "/$SELF_IP/d" /etc/hosts
+echo "${SELF_IP}" | cat - /etc/hosts > /tmp/~tmp && mv -f /tmp/~tmp /etc/hosts
+
+
 ping -c 2 114.114.115.115
 cnt=0
 while [ $? -ne 0 ]
@@ -40,48 +46,52 @@ if [ $? -eq 0 ];then
 	wget http://mirrors.163.com/.help/CentOS7-Base-163.repo -O /etc/yum.repos.d/CentOS7-Base-163.repo
 
 	echo "> install docker"
-	wget -qO- https://get.docker.com/ | sh
+	which docker
+	if [ $? -ne 0 ];then
+		wget -qO- https://get.docker.com/ | sh
 
-	echo "> config docker: ${DOCKER_CFG}"
-	grep http_proxy ${DOCKER_CFG}
-	if [ $? -eq 0 ];then
-		sed -r -i "s@.*http_proxy=.*@http_proxy='http://${HOST_IP}:8118/'@" ${DOCKER_CFG}
-	else
-		echo "http_proxy='http://${HOST_IP}:8118/'" >> ${DOCKER_CFG}
-	fi
-	grep other_args ${DOCKER_CFG}
-	if [ $? -eq 0 ];then
-		sed -r -i "s@.*other_args=.*@other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" ${DOCKER_CFG}
-	else
-		echo "other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors" >> ${DOCKER_CFG}
-	fi
-
-	if [ -f ${DOCKER_SVR} ];then
-		#for centos7
-		echo "config docker service for systemd: ${DOCKER_SVR}"
-
-		grep EnvironmentFile ${DOCKER_SVR}
+		echo "> config docker: ${DOCKER_CFG}"
+		grep http_proxy ${DOCKER_CFG}
 		if [ $? -eq 0 ];then
-			sed -r -i "s@EnvironmentFile=.*@EnvironmentFile=-${DOCKER_CFG}@" ${DOCKER_SVR}
+			sed -r -i "s@.*http_proxy=.*@http_proxy='http://${HOST_IP}:8118/'@" ${DOCKER_CFG}
 		else
-			sed -i "/\[Service\]/ a EnvironmentFile=-${DOCKER_CFG}" ${DOCKER_SVR}
+			echo "http_proxy='http://${HOST_IP}:8118/'" >> ${DOCKER_CFG}
+		fi
+		grep other_args ${DOCKER_CFG}
+		if [ $? -eq 0 ];then
+			sed -r -i "s@.*other_args=.*@other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" ${DOCKER_CFG}
+		else
+			echo "other_args='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors" >> ${DOCKER_CFG}
 		fi
 
-		sed -r -i "s@ExecStart=.*@ExecStart=/usr/bin/docker daemon \$other_args -H fd://@" ${DOCKER_SVR}
+		if [ -f ${DOCKER_SVR} ];then
+			#for centos7
+			echo "config docker service for systemd: ${DOCKER_SVR}"
 
-		echo "-- ${DOCKER_CFG} -----------"
-		cat ${DOCKER_CFG}
-		echo "----------------------------"
+			grep EnvironmentFile ${DOCKER_SVR}
+			if [ $? -eq 0 ];then
+				sed -r -i "s@EnvironmentFile=.*@EnvironmentFile=-${DOCKER_CFG}@" ${DOCKER_SVR}
+			else
+				sed -i "/\[Service\]/ a EnvironmentFile=-${DOCKER_CFG}" ${DOCKER_SVR}
+			fi
 
-		echo "daemon-reload for systemd..."
-		systemctl daemon-reload
-		echo "enable docker autostart..."
-		systemctl enable docker
+			sed -r -i "s@ExecStart=.*@ExecStart=/usr/bin/docker daemon \$other_args -H fd://@" ${DOCKER_SVR}
+
+			echo "-- ${DOCKER_CFG} -----------"
+			cat ${DOCKER_CFG}
+			echo "----------------------------"
+
+			echo "daemon-reload for systemd..."
+			systemctl daemon-reload
+			echo "enable docker autostart..."
+			systemctl enable docker
+		fi
+
+		echo "> restart docker daemon"
+		service docker restart
+	else
+		echo ">docker already installed"
 	fi
-
-	echo "> restart docker daemon"
-	service docker restart
-
 else
 	cat /etc/issue | grep -i ubuntu
 	if [ $? -eq 0 ];then
@@ -96,15 +106,18 @@ else
 		echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/99translations
 
 		echo "> install docker"
-		wget -qO- https://get.docker.com/ | sh
+		which docker
+		if [ $? -ne 0 ];then
+			wget -qO- https://get.docker.com/ | sh
 
-		DOCKER_CFG=/etc/default/docker
-		echo "> config docker: ${DOCKER_CFG}"
-		sed -r -i "s@.*export http_proxy=.*@export http_proxy='http://${HOST_IP}:8118/'@" ${DOCKER_CFG}
-		sed -r -i "s@.*DOCKER_OPTS=.*@DOCKER_OPTS='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" ${DOCKER_CFG}
+			DOCKER_CFG=/etc/default/docker
+			echo "> config docker: ${DOCKER_CFG}"
+			sed -r -i "s@.*export http_proxy=.*@export http_proxy='http://${HOST_IP}:8118/'@" ${DOCKER_CFG}
+			sed -r -i "s@.*DOCKER_OPTS=.*@DOCKER_OPTS='-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -api-enable-cors'@" ${DOCKER_CFG}
 
-		echo "> restart docker daemon"
-		service docker restart
+			echo "> restart docker daemon"
+			service docker restart
+		fi
 
 	else
 		echo "unknown os distro"
@@ -123,9 +136,11 @@ if [ $? -eq 0 ];then
 
 	echo "> pull busybox image"
 	sleep 2
-	docker pull busybox
-	docker pull swarm
-	docker pull dockerorca/ucp
+	for img in busybox swarm dockerorca/ucp
+	do
+		echo "------- pull image $img -------"
+		(docker images $img | grep $img) && echo "$img already pulled" || docker pull $img
+	done
 
 	echo "> test busybox"
 	docker run -i --rm busybox uname -a
