@@ -11,7 +11,7 @@ ACTION="$2"
 
 #check flag
 case "${FLAG}" in
-	swarm|registry|devstack)
+	swarm|ducp|registry|devstack)
 		;;
 	*)
 		echo "flag should be swarm,registry,devstack"
@@ -22,6 +22,7 @@ case "${FLAG}" in
 
 [flag]
 	swarm
+	ducp
 	registry
 	devstack
 EOF
@@ -49,6 +50,7 @@ fn_show_usage() {
 
 [flag]
 	swarm
+	ducp
 	registry
 	devstack
 
@@ -335,9 +337,9 @@ EOF
 	ls ${TMP_IMG}/*-seed.img >/dev/null 2>&1
 	if [ $? -eq 0 ];then
 		cd ${TMP_IMG}
-		for img in `ls *-seed.img`
+		for img in `ls *.cfg`
 		do
-			VM_NAME=$(echo $img | cut -f1 -d"-")
+			VM_NAME=$(echo $img | cut -f1 -d".")
 			MAC_ADDR=""
 			GUEST_IP=""
 			BACKING_FILE=""

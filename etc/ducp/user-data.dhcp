@@ -1,0 +1,62 @@
+#cloud-config
+
+hostname: {HOSTNAME}
+users:
+  - name: root
+    gecos: Jimmy Xu
+    groups: root
+    lock_passwd: false
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    #generate passwd: mkpasswd --method=SHA-512 --rounds=4096 (plain passwd: aaa123aa)
+    passwd: $6$rounds=4096$LiIq3Q3/c64erfZ4$bWHRJl.sjWTmUp01sCJBGM5tRMnx43ikjF3ckbvl75Fswbgdl1v1mgveD3fCP4W1q.rWbrt6BTiofcHnG3KFP/
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCp4xR1QBtsBW56Cws4T1ZeyqLEz749qzf06DxQxPblcuMA5+RaC7pTtvbfQAOD2Qyjn1yxRtA0gOwIQcmG7RS4wW817IBvIZCfZG8HIuRl53iUnmRHFHRF+F9xOSOf2NnWtLbRhJwCxxbYo6RfjdxglGfLtZQ3bgx+tAIaB7v6sZkvpxX469dmYxPu2jEbSBVSgPC6Ih7jfrkF4SUN67EyhntQt2EzMI1pZ1kX41ytxE9zjuKp/r3D8NiBu1zlbBsBf/+OJWnjZwL5vjx73nze6ntqus7STmkZMVUh9B+dDKNUtO2O2Q/Otm/aDw3PKiDU6a+rJQ89w6jnRIfcbpnr root@mini-ubuntu
+
+bootcmd:
+    - echo "===== bootcmd ====="
+    - /bin/sed -i "/127.0.0.1 /d" /etc/hosts
+    - echo "127.0.0.1 localhost" >> /etc/hosts
+    - echo "127.0.0.1 {HOSTNAME}" >> /etc/hosts
+    - hostname {HOSTNAME}
+    - echo "bootcmd:$(date +'%F %T')" > /tmp/run.log
+    - echo "===== bootcmd  ====="
+
+write_files:
+  - content: |
+        ## some more ls aliases
+        alias grep='grep --color=auto'
+        alias ls='ls --color=auto'
+        alias ll='ls -alF'
+        alias la='ls -A'
+        alias l='ls -CF'
+        ## prompt
+        PMT=""; if [  $UID -eq 0 ];then PMT="#" ;else PMT="$" ; fi
+        WHITE="\[\033[0m\]" 
+        YELLOW="\[\033[0;33m\]"
+        GREEN="\[\033[0;32;40m\]"
+        RED="\[\033[0;31;40m\]"
+        BLUE="\[\033[1;34m\]"
+        LGREEN="\[\033[1;32;40m\]"
+        export PS1="[$LGREEN\u@\h $BLUE\W$WHITE:$YELLOW\$(git branch 2>/dev/null | grep '^*' | colrm 1 2)$WHITE]"$PMT 
+        ## proxy
+        #export http_proxy=http://{HOST_IP}:8118
+        #export https_proxy=https://{HOST_IP}:8118
+        #export no_proxy=localhost,127.0.0.0/8,::1,/var/run/docker.sock,mirrors.163.com
+        ## PATH
+        export PATH=/usr/local/bin:${PATH}
+    path: /root/.bashrc
+    permissons: 0755
+
+runcmd:
+    - echo "===== runcmd ====="
+    - ping -c3 {HOST_IP}
+    - echo "runcmd :$(date +'%F %T')" >> /tmp/run.log
+    - netstat -tnopl
+    - ps -ef | grep sshd
+    - service sshd status
+    - ifconfig
+    - ip route
+    - echo "===== runcmd ====="
+
+final_message: "VM started..."
