@@ -13,7 +13,7 @@ MEM="1G"
 
 #check flag
 case "${FLAG}" in
-	swarm|ducp|registry|devstack)
+	swarm|ducp|registry|devstack|ceph)
 		;;
 	*)
 		echo "flag should be swarm,registry,devstack"
@@ -27,6 +27,7 @@ case "${FLAG}" in
 	ducp
 	registry
 	devstack
+	ceph
 EOF
 		exit 1
 		;;
